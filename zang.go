@@ -34,7 +34,21 @@ func main() {
 		text := input.Text()
 
 		if matches := gitCodeReference.FindStringSubmatch(text); len(matches) > 0 {
-			processGit(output, matches)
+
+			execGit := func(cmdOutput *bytes.Buffer, refspec, file string) error {
+				gitArgs := fmt.Sprintf(`%s:%s`, refspec, strings.Replace(file, `\`, `/`, -1))
+
+				cmd := exec.Command(`git`, `show`, gitArgs)
+
+				cmd.Dir = *repoFlag
+
+				cmd.Stdout = cmdOutput
+				cmd.Stderr = cmdOutput
+
+				return cmd.Run()
+			}
+
+			processGit(output, execGit, matches)
 		} else {
 			fmt.Fprintln(output, text)
 		}
@@ -47,7 +61,9 @@ func main() {
 	output.Flush()
 }
 
-func processGit(output io.Writer, parts []string) {
+func processGit(output io.Writer, execGit func(*bytes.Buffer, string, string) error, parts []string) {
+	var cmdOutput bytes.Buffer
+
 	format, refspec, file := parts[1], parts[2], parts[3]
 	from, fromErr := strconv.Atoi(parts[4])
 	to, toErr := strconv.Atoi(parts[5])
@@ -59,18 +75,7 @@ func processGit(output io.Writer, parts []string) {
 			hasFrom && hasTo && line >= from && line <= to
 	}
 
-	gitArgs := fmt.Sprintf(`%s:%s`, refspec, strings.Replace(file, `\`, `/`, -1))
-
-	cmd := exec.Command(`git`, `show`, gitArgs)
-	cmd.Dir = *repoFlag
-
-	var cmdOutput bytes.Buffer
-	cmd.Stdout = &cmdOutput
-	cmd.Stderr = &cmdOutput
-
-	err := cmd.Run()
-
-	if err == nil {
+	if execGit(&cmdOutput, refspec, file) == nil {
 		fmt.Fprintf(output, startCodeGate, format)
 
 		cmdScanner := bufio.NewScanner(&cmdOutput)
