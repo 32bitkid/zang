@@ -72,7 +72,10 @@ func processGit(output io.Writer, parts []string) {
 
 	if err == nil {
 		fmt.Fprintf(output, startCodeGate, format)
-		writeTrimmedLines(output, filterLines(&cmdOutput, filterFn)...)
+
+		cmdScanner := bufio.NewScanner(&cmdOutput)
+		writeTrimmedLines(output, filterLines(cmdScanner, filterFn)...)
+
 		fmt.Fprint(output, endCodeGate)
 		fmt.Fprintf(output, commitRefBlock, refspec)
 		fmt.Fprintf(output, fileRefBlock, file)
@@ -87,8 +90,7 @@ func processGit(output io.Writer, parts []string) {
 	}
 }
 
-func filterLines(cmdOutput *bytes.Buffer, filterFn func(line int) bool) []string {
-	scanner := bufio.NewScanner(cmdOutput)
+func filterLines(scanner *bufio.Scanner, filterFn func(line int) bool) []string {
 	lines := make([]string, 0, 30)
 
 	for line := 1; scanner.Scan(); line++ {
