@@ -1,6 +1,10 @@
 package main
 
-import "testing"
+import (
+	"bufio"
+	"bytes"
+	"testing"
+)
 
 func TestTrimSpaces(t *testing.T) {
 	lines := []string{
@@ -42,5 +46,30 @@ func TestHandleDanglingIndents(t *testing.T) {
 
 	if actual != expected {
 		t.Errorf("Expected %d got %d", expected, actual)
+	}
+}
+
+func TestWriteTrimmedLines(t *testing.T) {
+	lines := []string{
+		"\tThis is some",
+		"\t\tcontent",
+		"\tthat needs to be trimmed",
+	}
+
+	var output bytes.Buffer
+
+	writeTrimmedLines(&output, lines...)
+
+	scanner := bufio.NewScanner(&output)
+
+	// TODO probaby a better way to test this!
+	if scanner.Scan(); scanner.Text() != "This is some" {
+		t.Error("Ack!")
+	}
+	if scanner.Scan(); scanner.Text() != "\tcontent" {
+		t.Error("Ack!")
+	}
+	if scanner.Scan(); scanner.Text() != "that needs to be trimmed" {
+		t.Error("Ack!")
 	}
 }
