@@ -92,7 +92,7 @@ func TestFilterLines(t *testing.T) {
 		t.Error("Expected only two lines")
 	}
 
-	expectedLines := []string { "\tline 2", "\tline 3" }
+	expectedLines := []string{"\tline 2", "\tline 3"}
 
 	for i, val := range filteredLines {
 		if val != expectedLines[i] {
@@ -100,7 +100,6 @@ func TestFilterLines(t *testing.T) {
 		}
 	}
 }
-
 
 func TestProcessGitFullFile(t *testing.T) {
 	var output bytes.Buffer
