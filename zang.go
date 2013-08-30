@@ -11,41 +11,43 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+	"io"
 )
 
 var repoFlag = flag.String("repo", "", "the path to the repository")
 
 var gitCodeReference *regexp.Regexp = regexp.MustCompile("^\\s*```(\\w+)\\|git\\|(.*?)\\|(.*?):?(\\d+)?:?(\\d+)?```\\s*$")
 
-var commitRefBlock string = `> Commit: %s`
-var fileRefBlock string = `> File: %s`
-var linesRefBlock string = `> Lines: %d to %d`
-var lineRefBlock string = `> Line: %d`
+var startCodeGate string = "```%s\n"
+var endCodeGate string = "```\n"
+var commitRefBlock string = "> Commit: %s\n"
+var fileRefBlock string = "> File: %s\n"
+var linesRefBlock string = "> Lines: %d to %d\n"
+var lineRefBlock string = "> Line: %d\n"
 
 func main() {
 	flag.Parse()
 
-	in, out, err := os.Stdin, os.Stdout, os.Stderr
-	scanner := bufio.NewScanner(in)
+	input, output, err := bufio.NewScanner(os.Stdin), bufio.NewWriter(os.Stdout), os.Stderr
 
-	for scanner.Scan() {
-		text := scanner.Text()
+	for input.Scan() {
+		text := input.Text()
 
 		if matches := gitCodeReference.FindStringSubmatch(text); len(matches) > 0 {
-			for _, data := range processGit(matches) {
-				fmt.Fprintln(out, data)
-			}
+			processGit(output, matches)
 		} else {
-			fmt.Fprintln(out, text) // Println will add back the final '\n'
+			fmt.Fprintln(output, text)
 		}
 	}
 
-	if scannerError := scanner.Err(); scannerError != nil {
+	if scannerError := input.Err(); scannerError != nil {
 		fmt.Fprintln(err, "reading standard input:", scannerError)
 	}
+
+	output.Flush()
 }
 
-func processGit(parts []string) []string {
+func processGit(output io.Writer, parts []string) {
 	format, refspec, file := parts[1], parts[2], parts[3]
 	from, fromErr := strconv.Atoi(parts[4])
 	to, toErr := strconv.Atoi(parts[5])
@@ -62,37 +64,31 @@ func processGit(parts []string) []string {
 	cmd := exec.Command(`git`, `show`, gitArgs)
 	cmd.Dir = *repoFlag
 
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
+	var cmdOutput bytes.Buffer
+	cmd.Stdout = &cmdOutput
+	cmd.Stderr = &cmdOutput
 
 	err := cmd.Run()
 
 	if err == nil {
-		var lines []string = make([]string, 0, 30)
-
-		lines = append(lines, fmt.Sprintf("```%s", format))
-
-		lines = append(lines, filterLines(&out, filterFn)...)
-
-		lines = append(lines, "```")
-		lines = append(lines, fmt.Sprintf(commitRefBlock, refspec))
-		lines = append(lines, fmt.Sprintf(fileRefBlock, file))
+		fmt.Fprintf(output, startCodeGate, format)
+		writeTrimmedLines(output, filterLines(&cmdOutput, filterFn)...)
+		fmt.Fprint(output, endCodeGate)
+		fmt.Fprintf(output, commitRefBlock, refspec)
+		fmt.Fprintf(output, fileRefBlock, file)
 
 		if hasFrom && !hasTo {
-			lines = append(lines, fmt.Sprintf(lineRefBlock, from))
+			fmt.Fprintf(output, lineRefBlock, from)
 		} else if hasFrom && hasTo {
-			lines = append(lines, fmt.Sprintf(linesRefBlock, from, to))
+			fmt.Fprintf(output, linesRefBlock, from, to)
 		}
-
-		return lines
+	} else {
+		fmt.Fprintf(output, "    Unable to render code: %s\n", cmdOutput.String())
 	}
-
-	return []string{fmt.Sprintf("    Unable to render code: %s", out.String())}
 }
 
-func filterLines(out *bytes.Buffer, filterFn func(line int) bool) []string {
-	scanner := bufio.NewScanner(out)
+func filterLines(cmdOutput *bytes.Buffer, filterFn func(line int) bool) []string {
+	scanner := bufio.NewScanner(cmdOutput)
 	lines := make([]string, 0, 30)
 
 	for line := 1; scanner.Scan(); line++ {
@@ -101,37 +97,40 @@ func filterLines(out *bytes.Buffer, filterFn func(line int) bool) []string {
 		}
 	}
 
-	return trimLeadingWhitespace(lines)
+	return lines
 }
 
-func trimLeadingWhitespace(lines []string) []string {
-	ammountToTrim := int(^uint(0) >> 1)
+func writeTrimmedLines(output io.Writer, lines ...string) {
+	trimAmount := calculateAmountToTrim(lines)
+
+	for _, str := range lines {
+		if len(str) == 0 {
+			fmt.Fprintln(output, str)
+		} else {
+			fmt.Fprintln(output, str[trimAmount:])
+		}
+	}
+}
+
+func calculateAmountToTrim(lines []string) int {
+	amountToTrim := int(^uint(0) >> 1)
 
 	for _, lineContent := range lines {
 		for characterPosition, rune := range lineContent {
-			if characterPosition >= ammountToTrim {
+			if characterPosition >= amountToTrim {
 				break
 			}
 			if !unicode.IsSpace(rune) {
-				if ammountToTrim > characterPosition {
-					ammountToTrim = characterPosition
+				if amountToTrim > characterPosition {
+					amountToTrim = characterPosition
 				}
 				break
 			}
 		}
-		if ammountToTrim == 0 {
-			return lines
+		if amountToTrim == 0 {
+			break
 		}
 	}
 
-	trimmedLines := make([]string, len(lines))
-	for i, str := range lines {
-		if len(str) == 0 {
-			trimmedLines[i] = str
-		} else {
-			trimmedLines[i] = str[ammountToTrim:]
-		}
-	}
-
-	return trimmedLines
+	return amountToTrim
 }
