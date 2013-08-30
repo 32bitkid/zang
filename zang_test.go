@@ -6,6 +6,8 @@ import (
 	"testing"
 )
 
+var testFile = "line 1\n\tline 2\n\tline 3\nline 4"
+
 func TestTrimSpaces(t *testing.T) {
 	lines := []string{
 		"    This is some",
@@ -76,7 +78,7 @@ func TestWriteTrimmedLines(t *testing.T) {
 
 func TestFilterLines(t *testing.T) {
 	var output bytes.Buffer
-	output.WriteString("line 1\nline 2\nline 3\nline 4")
+	output.WriteString(testFile)
 
 	scanner := bufio.NewScanner(&output)
 
@@ -90,12 +92,71 @@ func TestFilterLines(t *testing.T) {
 		t.Error("Expected only two lines")
 	}
 
-	expectedLines := []string { "line 2", "line 3" }
+	expectedLines := []string { "\tline 2", "\tline 3" }
 
 	for i, val := range filteredLines {
 		if val != expectedLines[i] {
 			t.Errorf("Content was not right. Expected `%s`. Got `%s`", expectedLines[i], val)
 		}
 	}
+}
 
+
+func TestProcessGitFullFile(t *testing.T) {
+	var output bytes.Buffer
+	execGit := func(cmdOutput *bytes.Buffer, refspec, file string) error {
+		cmdOutput.WriteString(testFile)
+		return nil
+	}
+
+	line := "```csharp|git|developing|file.txt```"
+	args := gitCodeReference.FindStringSubmatch(line)
+	processGit(&output, execGit, args)
+
+	// TODO this could probably be done better
+	expectedOutput := "```csharp\nline 1\n\tline 2\n\tline 3\nline 4\n```\n> Commit: developing\n> File: file.txt\n"
+
+	if output.String() != expectedOutput {
+		t.Error("Expected result was not correct")
+	}
+}
+
+func TestProcessGitRange(t *testing.T) {
+	var output bytes.Buffer
+	execGit := func(cmdOutput *bytes.Buffer, refspec, file string) error {
+		cmdOutput.WriteString(testFile)
+		return nil
+	}
+
+	line := "```csharp|git|developing|file.txt:2:3```"
+	args := gitCodeReference.FindStringSubmatch(line)
+	processGit(&output, execGit, args)
+
+	// TODO this could probably be done better
+	expectedOutput := "```csharp\nline 2\nline 3\n```\n> Commit: developing\n> File: file.txt\n> Lines: 2 to 3\n"
+
+	if output.String() != expectedOutput {
+		t.Error("Expected result was not correct")
+		t.Error(output.String())
+	}
+}
+
+func TestProcessGitSingleLine(t *testing.T) {
+	var output bytes.Buffer
+	execGit := func(cmdOutput *bytes.Buffer, refspec, file string) error {
+		cmdOutput.WriteString(testFile)
+		return nil
+	}
+
+	line := "```csharp|git|developing|file.txt:2```"
+	args := gitCodeReference.FindStringSubmatch(line)
+	processGit(&output, execGit, args)
+
+	// TODO this could probably be done better
+	expectedOutput := "```csharp\nline 2\n```\n> Commit: developing\n> File: file.txt\n> Line: 2\n"
+
+	if output.String() != expectedOutput {
+		t.Error("Expected result was not correct")
+		t.Error(output.String())
+	}
 }
