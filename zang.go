@@ -20,10 +20,10 @@ var gitCodeReference *regexp.Regexp = regexp.MustCompile("^\\s*```(\\w+)\\|git\\
 
 var startCodeGate string = "```%s\n"
 var endCodeGate string = "```\n"
-var commitRefBlock string = "> Commit: %s\n"
-var fileRefBlock string = "> File: %s\n"
-var linesRefBlock string = "> Lines: %d to %d\n"
-var lineRefBlock string = "> Line: %d\n"
+var commitRefBlock string = "> Commit: %s  \n"
+var fileRefBlock string = "> File: %s  \n"
+var linesRefBlock string = "> Lines: %d to %d  \n"
+var lineRefBlock string = "> Line: %d  \n"
 
 func main() {
 	flag.Parse()
