@@ -95,7 +95,12 @@ func filterLines(scanner *bufio.Scanner, filterFn func(line int) bool) []string 
 
 	for line := 1; scanner.Scan(); line++ {
 		if filterFn(line) {
-			lines = append(lines, scanner.Text())
+			text := scanner.Text()
+			if(line == 1 && text[0] == '\xEF' && text[1] == '\xBB' && text[2] == '\xBF') {
+				text = text[3:]
+			}
+
+			lines = append(lines, text)
 		}
 	}
 
