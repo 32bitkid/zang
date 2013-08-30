@@ -73,3 +73,29 @@ func TestWriteTrimmedLines(t *testing.T) {
 		t.Error("Ack!")
 	}
 }
+
+func TestFilterLines(t *testing.T) {
+	var output bytes.Buffer
+	output.WriteString("line 1\nline 2\nline 3\nline 4")
+
+	scanner := bufio.NewScanner(&output)
+
+	filterFn := func(line int) bool {
+		return line > 1 && line < 4
+	}
+
+	filteredLines := filterLines(scanner, filterFn)
+
+	if len(filteredLines) != 2 {
+		t.Error("Expected only two lines")
+	}
+
+	expectedLines := []string { "line 2", "line 3" }
+
+	for i, val := range filteredLines {
+		if val != expectedLines[i] {
+			t.Errorf("Content was not right. Expected `%s`. Got `%s`", expectedLines[i], val)
+		}
+	}
+
+}
