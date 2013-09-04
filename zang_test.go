@@ -113,10 +113,10 @@ func TestProcessGitFullFile(t *testing.T) {
 	processGit(&output, execGit, args)
 
 	// TODO this could probably be done better
-	expectedOutput := "```csharp\nline 1\n\tline 2\n\tline 3\nline 4\n```\n> Commit: developing\n> File: file.txt\n"
+	expected := "```csharp\nline 1\n\tline 2\n\tline 3\nline 4\n```\n> Commit: developing  \n> File: file.txt  \n"
 
-	if output.String() != expectedOutput {
-		t.Error("Expected result was not correct")
+	if actual := output.String(); actual != expected {
+		t.Errorf("Expected result was not correct\n<<<\n%q\n---\n%q\n>>>\n", actual, expected)
 	}
 }
 
@@ -132,11 +132,10 @@ func TestProcessGitRange(t *testing.T) {
 	processGit(&output, execGit, args)
 
 	// TODO this could probably be done better
-	expectedOutput := "```csharp\nline 2\nline 3\n```\n> Commit: developing\n> File: file.txt\n> Lines: 2 to 3\n"
+	expected := "```csharp\nline 2\nline 3\n```\n> Commit: developing  \n> File: file.txt  \n> Lines: 2 to 3  \n"
 
-	if output.String() != expectedOutput {
-		t.Error("Expected result was not correct")
-		t.Error(output.String())
+	if actual := output.String(); actual != expected {
+		t.Errorf("Expected result was not correct\n<<<\n%q\n---\n%q\n>>>\n", actual, expected)
 	}
 }
 
@@ -152,10 +151,9 @@ func TestProcessGitSingleLine(t *testing.T) {
 	processGit(&output, execGit, args)
 
 	// TODO this could probably be done better
-	expectedOutput := "```csharp\nline 2\n```\n> Commit: developing\n> File: file.txt\n> Line: 2\n"
+	expected := "```csharp\nline 2\n```\n> Commit: developing  \n> File: file.txt  \n> Line: 2  \n"
 
-	if output.String() != expectedOutput {
-		t.Error("Expected result was not correct")
-		t.Error(output.String())
+	if actual := output.String(); actual != expected {
+		t.Errorf("Expected result was not correct\n<<<\n%q\n---\n%q\n>>>\n", actual, expected)
 	}
 }

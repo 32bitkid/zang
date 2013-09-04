@@ -14,16 +14,21 @@ import (
 	"unicode"
 )
 
-var repoFlag = flag.String("repo", "", "the path to the repository")
+type execGitFn func(*bytes.Buffer, string, string) error
 
-var gitCodeReference *regexp.Regexp = regexp.MustCompile("^\\s*```(\\w+)\\|git\\|(.*?)\\|(.*?):?(\\d+)?:?(\\d+)?```\\s*$")
+const (
+	startCodeGate string = "```%s\n"
+	endCodeGate string = "```\n"
+	commitRefBlock string = "> Commit: %s  \n"
+	fileRefBlock string = "> File: %s  \n"
+	linesRefBlock string = "> Lines: %d to %d  \n"
+	lineRefBlock string = "> Line: %d  \n"
+)
 
-var startCodeGate string = "```%s\n"
-var endCodeGate string = "```\n"
-var commitRefBlock string = "> Commit: %s  \n"
-var fileRefBlock string = "> File: %s  \n"
-var linesRefBlock string = "> Lines: %d to %d  \n"
-var lineRefBlock string = "> Line: %d  \n"
+var (
+	repoFlag = flag.String("repo", "", "the path to the repository")
+	gitCodeReference *regexp.Regexp = regexp.MustCompile("^\\s*```(\\w+)\\|git\\|(.*?)\\|(.*?):?(\\d+)?:?(\\d+)?```\\s*$")
+)
 
 func main() {
 	flag.Parse()
@@ -61,7 +66,7 @@ func main() {
 	output.Flush()
 }
 
-func processGit(output io.Writer, execGit func(*bytes.Buffer, string, string) error, parts []string) {
+func processGit(output io.Writer, execGit execGitFn, parts []string) {
 	var cmdOutput bytes.Buffer
 
 	format, refspec, file := parts[1], parts[2], parts[3]
