@@ -17,53 +17,64 @@ import (
 type execGitFn func(*bytes.Buffer, string, string) error
 
 const (
-	startCodeGate string = "```%s\n"
-	endCodeGate string = "```\n"
+	startCodeGate  string = "```%s\n"
+	endCodeGate    string = "```\n"
 	commitRefBlock string = "> Commit: %s  \n"
-	fileRefBlock string = "> File: %s  \n"
-	linesRefBlock string = "> Lines: %d to %d  \n"
-	lineRefBlock string = "> Line: %d  \n"
+	fileRefBlock   string = "> File: %s  \n"
+	linesRefBlock  string = "> Lines: %d to %d  \n"
+	lineRefBlock   string = "> Line: %d  \n"
 )
 
 var (
-	repoFlag = flag.String("repo", "", "the path to the repository")
+	repoFlag         string
 	gitCodeReference *regexp.Regexp = regexp.MustCompile("^\\s*```(\\w+)\\|git\\|(.*?)\\|(.*?):?(\\d+)?:?(\\d+)?```\\s*$")
 )
+
+func init() {
+	flag.StringVar(&repoFlag, "repo", "", "the path to the repository")
+}
 
 func main() {
 	flag.Parse()
 
-	input, output, err := bufio.NewScanner(os.Stdin), bufio.NewWriter(os.Stdout), os.Stderr
+	err := processFile(bufio.NewScanner(os.Stdin), bufio.NewWriter(os.Stdout))
 
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "reading standard input:", err)
+	}
+}
+
+func processFile(input *bufio.Scanner, output *bufio.Writer) error {
 	for input.Scan() {
 		text := input.Text()
 
 		if matches := gitCodeReference.FindStringSubmatch(text); len(matches) > 0 {
-
-			execGit := func(cmdOutput *bytes.Buffer, refspec, file string) error {
-				gitArgs := fmt.Sprintf(`%s:%s`, refspec, strings.Replace(file, `\`, `/`, -1))
-
-				cmd := exec.Command(`git`, `show`, gitArgs)
-
-				cmd.Dir = *repoFlag
-
-				cmd.Stdout = cmdOutput
-				cmd.Stderr = cmdOutput
-
-				return cmd.Run()
-			}
-
 			processGit(output, execGit, matches)
 		} else {
 			fmt.Fprintln(output, text)
 		}
 	}
 
+	defer output.Flush()
+
 	if scannerError := input.Err(); scannerError != nil {
-		fmt.Fprintln(err, "reading standard input:", scannerError)
+		return scannerError
 	}
 
-	output.Flush()
+	return nil
+}
+
+func execGit(cmdOutput *bytes.Buffer, refspec, file string) error {
+	gitArgs := fmt.Sprintf(`%s:%s`, refspec, strings.Replace(file, `\`, `/`, -1))
+
+	cmd := exec.Command(`git`, `show`, gitArgs)
+
+	cmd.Dir = repoFlag
+
+	cmd.Stdout = cmdOutput
+	cmd.Stderr = cmdOutput
+
+	return cmd.Run()
 }
 
 func processGit(output io.Writer, execGit execGitFn, parts []string) {
