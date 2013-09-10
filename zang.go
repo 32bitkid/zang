@@ -36,7 +36,29 @@ func init() {
 func main() {
 	flag.Parse()
 
-	err := processFile(bufio.NewScanner(os.Stdin), bufio.NewWriter(os.Stdout))
+	var (
+		inFile  *os.File = os.Stdin
+		outFile *os.File = os.Stdout
+		fileErr error
+	)
+
+	if len(flag.Arg(0)) > 0 {
+		inFile, fileErr = os.Open(flag.Arg(0))
+
+		if fileErr != nil {
+			panic(fmt.Sprintf("Could not open input file \"%s\"\n", flag.Arg(0)))
+		}
+	}
+
+	if len(flag.Arg(1)) > 0 {
+		outFile, fileErr = os.Create(flag.Arg(1))
+
+		if fileErr != nil {
+			panic(fmt.Sprintf("Could not write to file \"%s\"\n", flag.Arg(1)))
+		}
+	}
+
+	err := processFile(bufio.NewScanner(inFile), bufio.NewWriter(outFile))
 
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "reading standard input:", err)
