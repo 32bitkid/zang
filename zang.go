@@ -33,30 +33,30 @@ func init() {
 	flag.BoolVar(&checkStaleFlag, "check", true, "search the repository for changes since the documentation was written")
 }
 
+func argAsFile(i int, defaultFile *os.File, method func(string) (*os.File, error)) *os.File {
+	fileName := flag.Arg(i)
+
+	if len(fileName) == 0 {
+		return defaultFile
+	}
+
+	file, fileErr := method(fileName)
+
+	if fileErr != nil {
+		fmt.Fprintf(os.Stderr, "Could not open input file \"%s\"\n", fileName)
+		os.Exit(1)
+	}
+
+	return file
+}
+
 func main() {
 	flag.Parse()
 
 	var (
-		inFile  *os.File = os.Stdin
-		outFile *os.File = os.Stdout
-		fileErr error
+		inFile  *os.File = argAsFile(0, os.Stdin, os.Open)
+		outFile *os.File = argAsFile(1, os.Stdout, os.Create)
 	)
-
-	if len(flag.Arg(0)) > 0 {
-		inFile, fileErr = os.Open(flag.Arg(0))
-
-		if fileErr != nil {
-			panic(fmt.Sprintf("Could not open input file \"%s\"\n", flag.Arg(0)))
-		}
-	}
-
-	if len(flag.Arg(1)) > 0 {
-		outFile, fileErr = os.Create(flag.Arg(1))
-
-		if fileErr != nil {
-			panic(fmt.Sprintf("Could not write to file \"%s\"\n", flag.Arg(1)))
-		}
-	}
 
 	err := processFile(bufio.NewScanner(inFile), bufio.NewWriter(outFile))
 
