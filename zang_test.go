@@ -109,7 +109,7 @@ func TestProcessGitFullFile(t *testing.T) {
 	}
 
 	line := "```csharp|git|developing|file.txt```"
-	args := gitCodeReference.FindStringSubmatch(line)
+	args, _ := parseAsGitCommand(line)
 	processGit(&output, execGit, args)
 
 	// TODO this could probably be done better
@@ -128,7 +128,7 @@ func TestProcessGitRange(t *testing.T) {
 	}
 
 	line := "```csharp|git|developing|file.txt:2:3```"
-	args := gitCodeReference.FindStringSubmatch(line)
+	args, _ := parseAsGitCommand(line)
 	processGit(&output, execGit, args)
 
 	// TODO this could probably be done better
@@ -147,7 +147,7 @@ func TestProcessGitSingleLine(t *testing.T) {
 	}
 
 	line := "```csharp|git|developing|file.txt:2```"
-	args := gitCodeReference.FindStringSubmatch(line)
+	args, _ := parseAsGitCommand(line)
 	processGit(&output, execGit, args)
 
 	// TODO this could probably be done better

@@ -2,20 +2,12 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"flag"
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"regexp"
-	"strconv"
-	"strings"
 	"unicode"
-)
-
-type (
-	execGitFn func(*bytes.Buffer, ...string) error
 )
 
 const (
@@ -25,6 +17,7 @@ const (
 	fileRefBlock   string = "> File: %s  \n"
 	linesRefBlock  string = "> Lines: %d to %d  \n"
 	lineRefBlock   string = "> Line: %d  \n"
+	staleRefBlock  string = "> *WARNING* This file has changed since the referenced commit. This documentation may be out of date. \n"
 )
 
 var (
@@ -49,9 +42,11 @@ func main() {
 func processFile(input *bufio.Scanner, output *bufio.Writer) error {
 	for input.Scan() {
 		text := input.Text()
+		git := memoizeExecGitFn(execGit)
 
-		if matches := gitCodeReference.FindStringSubmatch(text); len(matches) > 0 {
-			processGit(output, execGit, matches)
+		if args, success := parseAsGitCommand(text); success {
+			processGit(output, git, args)
+			checkGitChanges(output, git, args)
 		} else {
 			fmt.Fprintln(output, text)
 		}
@@ -64,60 +59,6 @@ func processFile(input *bufio.Scanner, output *bufio.Writer) error {
 	}
 
 	return nil
-}
-
-func gitShowFile(result *bytes.Buffer, exec execGitFn, refspec, file string) error {
-	fileRef := fmt.Sprintf(`%s:%s`, refspec, strings.Replace(file, `\`, `/`, -1))
-	return exec(result, `show`, fileRef)
-}
-
-func gitChangedFiles(result *bytes.Buffer, exec execGitFn, commit1, commit2 string) error {
-	return exec(result, `diff`, `--name-only`, commit1, commit2)
-}
-
-func execGit(cmdOutput *bytes.Buffer, args ...string) error {
-	cmd := exec.Command(`git`, args...)
-
-	cmd.Dir = repoFlag
-
-	cmd.Stdout = cmdOutput
-	cmd.Stderr = cmdOutput
-
-	return cmd.Run()
-}
-
-func processGit(output io.Writer, execGit execGitFn, parts []string) {
-	var cmdOutput bytes.Buffer
-
-	format, refspec, file := parts[1], parts[2], parts[3]
-	from, fromErr := strconv.Atoi(parts[4])
-	to, toErr := strconv.Atoi(parts[5])
-	hasFrom, hasTo := fromErr == nil, toErr == nil
-
-	filterFn := func(line int) bool {
-		return !hasFrom && !hasTo ||
-			hasFrom && !hasTo && line == from ||
-			hasFrom && hasTo && line >= from && line <= to
-	}
-
-	if gitShowFile(&cmdOutput, execGit, refspec, file) == nil {
-		fmt.Fprintf(output, startCodeGate, format)
-
-		cmdScanner := bufio.NewScanner(&cmdOutput)
-		writeTrimmedLines(output, filterLines(cmdScanner, filterFn)...)
-
-		fmt.Fprint(output, endCodeGate)
-		fmt.Fprintf(output, commitRefBlock, refspec)
-		fmt.Fprintf(output, fileRefBlock, file)
-
-		if hasFrom && !hasTo {
-			fmt.Fprintf(output, lineRefBlock, from)
-		} else if hasFrom && hasTo {
-			fmt.Fprintf(output, linesRefBlock, from, to)
-		}
-	} else {
-		fmt.Fprintf(output, "    Unable to render code: %s\n", cmdOutput.String())
-	}
 }
 
 func filterLines(scanner *bufio.Scanner, filterFn func(line int) bool) []string {
