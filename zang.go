@@ -44,9 +44,10 @@ func main() {
 }
 
 func processFile(input *bufio.Scanner, output *bufio.Writer) error {
+	git := memoizeExecGitFn(execGit)
+
 	for input.Scan() {
 		text := input.Text()
-		git := memoizeExecGitFn(execGit)
 
 		if args, success := parseAsGitCommand(text); success {
 			processGit(output, git, args)
