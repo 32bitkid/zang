@@ -97,7 +97,7 @@ func processGit(output io.Writer, execGit execGitFn, args *GitCommandArgs) {
 
 func checkGitChanges(output io.Writer, git execGitFn, args *GitCommandArgs) bool {
 
-	results, error := gitChangedFiles(git, args.refspec, "developing")
+	results, error := gitChangedFiles(git, args.refspec, headFlag)
 	if error == nil {
 		if _, exists := results[args.file]; exists {
 			fmt.Fprintf(os.Stderr, "WARN: \"%s\" has changed since %s. This documentation may be out of date.\n", args.file, args.refspec)

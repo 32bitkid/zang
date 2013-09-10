@@ -22,11 +22,15 @@ const (
 
 var (
 	repoFlag         string
+	headFlag         string
+	checkStaleFlag   bool
 	gitCodeReference *regexp.Regexp = regexp.MustCompile("^\\s*```(\\w+)\\|git\\|(.*?)\\|(.*?):?(\\d+)?:?(\\d+)?```\\s*$")
 )
 
 func init() {
 	flag.StringVar(&repoFlag, "repo", "", "the path to the repository")
+	flag.StringVar(&headFlag, "head", "master", "the commit to check for stale documentation")
+	flag.BoolVar(&checkStaleFlag, "check", true, "search the repository for changes since the documentation was written")
 }
 
 func main() {
@@ -46,7 +50,11 @@ func processFile(input *bufio.Scanner, output *bufio.Writer) error {
 
 		if args, success := parseAsGitCommand(text); success {
 			processGit(output, git, args)
-			checkGitChanges(output, git, args)
+
+			if checkStaleFlag {
+				checkGitChanges(output, git, args)
+			}
+
 		} else {
 			fmt.Fprintln(output, text)
 		}
