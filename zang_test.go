@@ -103,7 +103,7 @@ func TestFilterLines(t *testing.T) {
 
 func TestProcessGitFullFile(t *testing.T) {
 	var output bytes.Buffer
-	execGit := func(cmdOutput *bytes.Buffer, refspec, file string) error {
+	execGit := func(cmdOutput *bytes.Buffer, args ...string) error {
 		cmdOutput.WriteString(testFile)
 		return nil
 	}
@@ -122,7 +122,7 @@ func TestProcessGitFullFile(t *testing.T) {
 
 func TestProcessGitRange(t *testing.T) {
 	var output bytes.Buffer
-	execGit := func(cmdOutput *bytes.Buffer, refspec, file string) error {
+	execGit := func(cmdOutput *bytes.Buffer, args ...string) error {
 		cmdOutput.WriteString(testFile)
 		return nil
 	}
@@ -141,7 +141,7 @@ func TestProcessGitRange(t *testing.T) {
 
 func TestProcessGitSingleLine(t *testing.T) {
 	var output bytes.Buffer
-	execGit := func(cmdOutput *bytes.Buffer, refspec, file string) error {
+	execGit := func(cmdOutput *bytes.Buffer, args ...string) error {
 		cmdOutput.WriteString(testFile)
 		return nil
 	}

@@ -14,7 +14,9 @@ import (
 	"unicode"
 )
 
-type execGitFn func(*bytes.Buffer, string, string) error
+type (
+	execGitFn func(*bytes.Buffer, ...string) error
+)
 
 const (
 	startCodeGate  string = "```%s\n"
@@ -64,10 +66,17 @@ func processFile(input *bufio.Scanner, output *bufio.Writer) error {
 	return nil
 }
 
-func execGit(cmdOutput *bytes.Buffer, refspec, file string) error {
-	gitArgs := fmt.Sprintf(`%s:%s`, refspec, strings.Replace(file, `\`, `/`, -1))
+func gitShowFile(result *bytes.Buffer, exec execGitFn, refspec, file string) error {
+	fileRef := fmt.Sprintf(`%s:%s`, refspec, strings.Replace(file, `\`, `/`, -1))
+	return exec(result, `show`, fileRef)
+}
 
-	cmd := exec.Command(`git`, `show`, gitArgs)
+func gitChangedFiles(result *bytes.Buffer, exec execGitFn, commit1, commit2 string) error {
+	return exec(result, `diff`, `--name-only`, commit1, commit2)
+}
+
+func execGit(cmdOutput *bytes.Buffer, args ...string) error {
+	cmd := exec.Command(`git`, args...)
 
 	cmd.Dir = repoFlag
 
@@ -91,7 +100,7 @@ func processGit(output io.Writer, execGit execGitFn, parts []string) {
 			hasFrom && hasTo && line >= from && line <= to
 	}
 
-	if execGit(&cmdOutput, refspec, file) == nil {
+	if gitShowFile(&cmdOutput, execGit, refspec, file) == nil {
 		fmt.Fprintf(output, startCodeGate, format)
 
 		cmdScanner := bufio.NewScanner(&cmdOutput)
