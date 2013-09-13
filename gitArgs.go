@@ -1,8 +1,13 @@
 package main
 
 import (
+	"regexp"
 	"strconv"
 	"strings"
+)
+
+var (
+	gitCodeReference *regexp.Regexp = regexp.MustCompile("^\\s*```(\\w+)\\|git\\|(.*?)\\|(.*?):?(\\d+)?:?(\\d+)?```\\s*$")
 )
 
 type GitCommandArgs struct {

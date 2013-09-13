@@ -72,10 +72,10 @@ func execGit(cmdOutput *bytes.Buffer, args ...string) error {
 	return cmd.Run()
 }
 
-func processGit(output io.Writer, execGit execGitFn, args *GitCommandArgs) {
+func processGit(output io.Writer, execGit execGitFn, args *GitCommandArgs) error {
 	var cmdOutput bytes.Buffer
 
-	if gitShowFile(&cmdOutput, execGit, args.refspec, args.file) == nil {
+	if err := gitShowFile(&cmdOutput, execGit, args.refspec, args.file); err == nil {
 		fmt.Fprintf(output, startCodeGate, args.format)
 
 		cmdScanner := bufio.NewScanner(&cmdOutput)
@@ -90,8 +90,10 @@ func processGit(output io.Writer, execGit execGitFn, args *GitCommandArgs) {
 		} else if args.hasFrom && args.hasTo {
 			fmt.Fprintf(output, linesRefBlock, args.from, args.to)
 		}
+		return nil
 	} else {
 		fmt.Fprintf(output, "    Unable to render code: %s\n", cmdOutput.String())
+		return err
 	}
 }
 

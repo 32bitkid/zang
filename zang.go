@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"regexp"
 	"unicode"
 )
 
@@ -21,10 +20,9 @@ const (
 )
 
 var (
-	repoFlag         string
-	headFlag         string
-	checkStaleFlag   bool
-	gitCodeReference *regexp.Regexp = regexp.MustCompile("^\\s*```(\\w+)\\|git\\|(.*?)\\|(.*?):?(\\d+)?:?(\\d+)?```\\s*$")
+	repoFlag       string
+	headFlag       string
+	checkStaleFlag bool
 )
 
 func init() {
