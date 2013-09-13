@@ -31,8 +31,7 @@ func init() {
 	flag.BoolVar(&checkStaleFlag, "check", true, "search the repository for changes since the documentation was written")
 }
 
-func argAsFile(i int, defaultFile *os.File, method func(string) (*os.File, error)) *os.File {
-	fileName := flag.Arg(i)
+func safeFile(method func(string) (*os.File, error), fileName string, defaultFile *os.File) *os.File {
 
 	if len(fileName) == 0 {
 		return defaultFile
@@ -52,8 +51,8 @@ func main() {
 	flag.Parse()
 
 	var (
-		inFile  *os.File = argAsFile(0, os.Stdin, os.Open)
-		outFile *os.File = argAsFile(1, os.Stdout, os.Create)
+		inFile  *os.File = safeFile(os.Open, flag.Arg(0), os.Stdin)
+		outFile *os.File = safeFile(os.Create, flag.Arg(1), os.Stdout)
 	)
 
 	err := processFile(bufio.NewScanner(inFile), bufio.NewWriter(outFile))
