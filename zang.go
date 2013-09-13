@@ -111,7 +111,7 @@ func writeTrimmedLines(output io.Writer, lines ...string) {
 	trimAmount := calculateAmountToTrim(lines)
 
 	for _, str := range lines {
-		if len(str) == 0 {
+		if len(str) <= trimAmount {
 			fmt.Fprintln(output, str)
 		} else {
 			fmt.Fprintln(output, str[trimAmount:])
