@@ -69,7 +69,9 @@ func processFile(input *bufio.Scanner, output *bufio.Writer) error {
 		text := input.Text()
 
 		if args, success := parseAsGitCommand(text); success {
-			processGit(output, git, args)
+			if err := processGit(output, git, args); err != nil {
+				return err
+			}
 
 			if checkStaleFlag {
 				checkGitChanges(output, git, args)
@@ -82,11 +84,7 @@ func processFile(input *bufio.Scanner, output *bufio.Writer) error {
 
 	defer output.Flush()
 
-	if scannerError := input.Err(); scannerError != nil {
-		return scannerError
-	}
-
-	return nil
+	return input.Err()
 }
 
 func filterLines(scanner *bufio.Scanner, filterFn func(line int) bool) []string {
