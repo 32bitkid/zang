@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"unicode"
 )
 
@@ -23,12 +24,18 @@ var (
 	repoFlag       string
 	headFlag       string
 	checkStaleFlag bool
+
+	inFlag  string
+	outFlag string
 )
 
 func init() {
 	flag.StringVar(&repoFlag, "repo", "", "the path to the repository")
 	flag.StringVar(&headFlag, "head", "master", "the commit to check for stale documentation")
 	flag.BoolVar(&checkStaleFlag, "check", true, "search the repository for changes since the documentation was written")
+
+	flag.StringVar(&inFlag, "in", "", "input folder to process")
+	flag.StringVar(&outFlag, "out", "", "output folder")
 }
 
 func safeFile(method func(string) (*os.File, error), fileName string, defaultFile *os.File) *os.File {
@@ -37,10 +44,12 @@ func safeFile(method func(string) (*os.File, error), fileName string, defaultFil
 		return defaultFile
 	}
 
-	file, fileErr := method(fileName)
+	cleanFileName := filepath.Clean(fileName)
+
+	file, fileErr := method(cleanFileName)
 
 	if fileErr != nil {
-		fmt.Fprintf(os.Stderr, "Could not open input file \"%s\"\n", fileName)
+		fmt.Fprintf(os.Stderr, "Could not open file \"%s\"\n", cleanFileName)
 		os.Exit(1)
 	}
 
@@ -49,17 +58,66 @@ func safeFile(method func(string) (*os.File, error), fileName string, defaultFil
 
 func main() {
 	flag.Parse()
+	if err := modeSwitch(flag.Arg(0), flag.Arg(1)); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %s", err)
+	}
+}
 
+func modeSwitch(inName, outName string) error {
+
+	if len(inName) == 0 {
+		return fileMode(inName, outName)
+	}
+
+	fileInfo, statErr := os.Stat(inName)
+	if statErr != nil {
+		return statErr
+	}
+
+	if fileInfo.IsDir() {
+		return dirMode(inName, outName)
+
+	} else {
+		return fileMode(inName, outName)
+	}
+}
+
+func dirMode(inFolder, outFolder string) error {
+
+	inFolder = filepath.Clean(inFolder)
+	outFolder = filepath.Clean(outFolder)
+
+	dirWalker := func(path string, info os.FileInfo, err error) error {
+
+		if filepath.Ext(path) == ".md" {
+
+			relativePath, relErr := filepath.Rel(inFolder, path)
+
+			if relErr != nil {
+				return relErr
+			}
+
+			destFile := filepath.Join(outFolder, relativePath)
+
+			os.MkdirAll(filepath.Dir(destFile), os.ModePerm)
+
+			if fileErr := fileMode(path, destFile); fileErr != nil {
+				return fileErr
+			}
+		}
+		return err
+	}
+
+	return filepath.Walk(inFolder, dirWalker)
+}
+
+func fileMode(inFileName, outFileName string) error {
 	var (
-		inFile  *os.File = safeFile(os.Open, flag.Arg(0), os.Stdin)
-		outFile *os.File = safeFile(os.Create, flag.Arg(1), os.Stdout)
+		inFile  *os.File = safeFile(os.Open, inFileName, os.Stdin)
+		outFile *os.File = safeFile(os.Create, outFileName, os.Stdout)
 	)
 
-	err := processFile(bufio.NewScanner(inFile), bufio.NewWriter(outFile))
-
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "reading standard input:", err)
-	}
+	return processFile(bufio.NewScanner(inFile), bufio.NewWriter(outFile))
 }
 
 func processFile(input *bufio.Scanner, output *bufio.Writer) error {
