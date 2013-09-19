@@ -18,6 +18,16 @@ type (
 	}
 )
 
+const (
+	startCodeGate  string = "```%s\n"
+	endCodeGate    string = "```\n"
+	commitRefBlock string = "> Commit: %s  \n"
+	fileRefBlock   string = "> File: %s  \n"
+	linesRefBlock  string = "> Lines: %d to %d  \n"
+	lineRefBlock   string = "> Line: %d  \n"
+	staleRefBlock  string = "> *WARNING* This file has changed since the referenced commit. This documentation may be out of date. \n"
+)
+
 func memoizeExecGitFn(fn execGitFn) execGitFn {
 
 	cache := make(map[string]cachedResult)
