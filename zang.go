@@ -81,7 +81,6 @@ func modeSwitch(inName, outName string) error {
 
 	if fileInfo.IsDir() {
 		return dirMode(inName, outName)
-
 	} else {
 		return fileMode(inName, outName)
 	}
@@ -91,6 +90,9 @@ func dirMode(inFolder, outFolder string) error {
 
 	inFolder = filepath.Clean(inFolder)
 	outFolder = filepath.Clean(outFolder)
+
+	fileCount := 0
+	errorChannel := make(chan error)
 
 	dirWalker := func(path string, info os.FileInfo, err error) error {
 
@@ -106,14 +108,24 @@ func dirMode(inFolder, outFolder string) error {
 
 			os.MkdirAll(filepath.Dir(destFile), os.ModePerm)
 
-			if fileErr := fileMode(path, destFile); fileErr != nil {
-				return fileErr
-			}
+			inFile := safeFile(os.Open, path, os.Stdin)
+			outFile := safeFile(os.Create, destFile, os.Stdout)
+
+			fileCount += 1
+			go processFile(bufio.NewScanner(inFile), bufio.NewWriter(outFile), errorChannel)
 		}
 		return err
 	}
 
-	return filepath.Walk(inFolder, dirWalker)
+	walkErr := filepath.Walk(inFolder, dirWalker)
+
+	for errorIndex := 0; errorIndex < fileCount; errorIndex++ {
+		if err := <-errorChannel; err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+	}
+
+	return walkErr
 }
 
 func fileMode(inFileName, outFileName string) error {
@@ -122,18 +134,25 @@ func fileMode(inFileName, outFileName string) error {
 		outFile *os.File = safeFile(os.Create, outFileName, os.Stdout)
 	)
 
-	return processFile(bufio.NewScanner(inFile), bufio.NewWriter(outFile))
+	errorChannel := make(chan error, 1)
+
+	go processFile(bufio.NewScanner(inFile), bufio.NewWriter(outFile), errorChannel)
+
+	return <-errorChannel
 }
 
-func processFile(input *bufio.Scanner, output *bufio.Writer) error {
+func processFile(input *bufio.Scanner, output *bufio.Writer, errorChannel chan<- error) {
 	git := memoizeExecGitFn(execGit)
+
+	defer output.Flush()
 
 	for input.Scan() {
 		text := input.Text()
 
 		if args, success := parseAsGitCommand(text); success {
 			if err := processGit(output, git, args); err != nil {
-				return err
+				errorChannel <- err
+				return
 			}
 
 			if checkStaleFlag {
@@ -145,9 +164,7 @@ func processFile(input *bufio.Scanner, output *bufio.Writer) error {
 		}
 	}
 
-	defer output.Flush()
-
-	return input.Err()
+	errorChannel <- input.Err()
 }
 
 func filterLines(scanner *bufio.Scanner, filterFn func(line int) bool) []string {
