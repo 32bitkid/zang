@@ -103,7 +103,7 @@ func dirMode(inFolder, outFolder string) error {
 			outFile := safeFile(os.Create, destFile, os.Stdout)
 
 			fileCount += 1
-			go processFile(bufio.NewScanner(inFile), bufio.NewWriter(outFile), errorChannel)
+			go processFile(bufio.NewScanner(inFile), outFile, errorChannel)
 		}
 		return err
 	}
@@ -127,18 +127,17 @@ func fileMode(inFileName, outFileName string) error {
 
 	errorChannel := make(chan error, 1)
 
-	go processFile(bufio.NewScanner(inFile), bufio.NewWriter(outFile), errorChannel)
+	go processFile(bufio.NewScanner(inFile), outFile, errorChannel)
 
 	return <-errorChannel
 }
 
 const codeMarker = "```"
 
-func processFile(input *bufio.Scanner, output *bufio.Writer, errorChannel chan<- error) {
+func processFile(input *bufio.Scanner, output io.Writer, errorChannel chan<- error) {
 	var reportedError error
 
 	defer func() {
-		output.Flush()
 		errorChannel <- reportedError
 	}()
 
