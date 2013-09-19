@@ -7,13 +7,14 @@ import (
 )
 
 var (
-	gitCodeReference *regexp.Regexp = regexp.MustCompile("^\\s*```(\\w+)\\|git\\|(.*?)\\|(.*?):?(\\d+)?:?(\\d+)?```\\s*$")
+	gitCodeReference *regexp.Regexp = regexp.MustCompile("^\\s*<!--\\s*\\{\\{(\\w+)\\|git\\|(.*?)\\|(.*?):?(\\d+)?:?(\\d+)?\\}\\}\\s*-->\\s*$")
 )
 
 type GitCommandArgs struct {
 	from, to              int
 	hasFrom, hasTo        bool
 	format, refspec, file string
+	source                string
 }
 
 func (args GitCommandArgs) displayLine(line int) bool {
@@ -29,13 +30,14 @@ func parseAsGitCommand(text string) (*GitCommandArgs, bool) {
 		to, toErr := strconv.Atoi(parts[5])
 
 		return &GitCommandArgs{
-			from:    from,
-			to:      to,
-			hasFrom: fromErr == nil,
-			hasTo:   toErr == nil,
-			format:  parts[1],
-			refspec: parts[2],
-			file:    strings.Replace(parts[3], `\`, `/`, -1),
+			from,
+			to,
+			fromErr == nil,
+			toErr == nil,
+			parts[1],
+			parts[2],
+			strings.Replace(parts[3], `\`, `/`, -1),
+			text,
 		}, true
 
 	} else {

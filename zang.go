@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 	"unicode"
 )
@@ -131,6 +132,8 @@ func fileMode(inFileName, outFileName string) error {
 	return <-errorChannel
 }
 
+const codeMarker = "```"
+
 func processFile(input *bufio.Scanner, output *bufio.Writer, errorChannel chan<- error) {
 	var reportedError error
 
@@ -141,13 +144,31 @@ func processFile(input *bufio.Scanner, output *bufio.Writer, errorChannel chan<-
 
 	git := memoizeExecGitFn(execGit)
 
-	for input.Scan() {
+	skipScan := false
+
+	for skipScan || input.Scan() {
+		skipScan = false
+
 		text := input.Text()
 
 		if args, success := parseAsGitCommand(text); success {
 			if err := processGit(output, git, args); err != nil {
 				reportedError = err
 				return
+			}
+
+			if input.Scan() == false {
+				break
+			}
+
+			if strings.HasPrefix(input.Text(), codeMarker) {
+				for input.Scan() {
+					if strings.HasPrefix(input.Text(), codeMarker) {
+						break
+					}
+				}
+			} else {
+				skipScan = true
 			}
 
 			if checkStaleFlag {
