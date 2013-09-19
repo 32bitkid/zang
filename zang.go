@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"time"
 	"unicode"
 )
 
@@ -58,9 +59,13 @@ func safeFile(method func(string) (*os.File, error), fileName string, defaultFil
 
 func main() {
 	flag.Parse()
+
+	start := time.Now()
 	if err := modeSwitch(flag.Arg(0), flag.Arg(1)); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s", err)
+		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
 	}
+
+	fmt.Printf("%v", time.Since(start))
 }
 
 func modeSwitch(inName, outName string) error {
