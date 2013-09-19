@@ -30,24 +30,6 @@ func init() {
 	flag.StringVar(&outFlag, "out", "", "output folder")
 }
 
-func safeFile(method func(string) (*os.File, error), fileName string, defaultFile *os.File) *os.File {
-
-	if len(fileName) == 0 {
-		return defaultFile
-	}
-
-	cleanFileName := filepath.Clean(fileName)
-
-	file, fileErr := method(cleanFileName)
-
-	if fileErr != nil {
-		fmt.Fprintf(os.Stderr, "Could not open file \"%s\"\n", cleanFileName)
-		os.Exit(1)
-	}
-
-	return file
-}
-
 func main() {
 	flag.Parse()
 
@@ -232,4 +214,22 @@ func calculateAmountToTrim(lines []string) int {
 	}
 
 	return amountToTrim
+}
+
+func safeFile(method func(string) (*os.File, error), fileName string, defaultFile *os.File) *os.File {
+
+	if len(fileName) == 0 {
+		return defaultFile
+	}
+
+	cleanFileName := filepath.Clean(fileName)
+
+	file, fileErr := method(cleanFileName)
+
+	if fileErr != nil {
+		fmt.Fprintf(os.Stderr, "Could not open file \"%s\"\n", cleanFileName)
+		os.Exit(1)
+	}
+
+	return file
 }
