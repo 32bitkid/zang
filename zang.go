@@ -142,29 +142,33 @@ func fileMode(inFileName, outFileName string) error {
 }
 
 func processFile(input *bufio.Scanner, output *bufio.Writer, errorChannel chan<- error) {
-	git := memoizeExecGitFn(execGit)
+	var reportedError error
 
-	defer output.Flush()
+	defer func() {
+		output.Flush()
+		errorChannel <- reportedError
+	}()
+
+	git := memoizeExecGitFn(execGit)
 
 	for input.Scan() {
 		text := input.Text()
 
 		if args, success := parseAsGitCommand(text); success {
 			if err := processGit(output, git, args); err != nil {
-				errorChannel <- err
+				reportedError = err
 				return
 			}
 
 			if checkStaleFlag {
 				checkGitChanges(output, git, args)
 			}
-
 		} else {
 			fmt.Fprintln(output, text)
 		}
 	}
 
-	errorChannel <- input.Err()
+	reportedError = input.Err()
 }
 
 func filterLines(scanner *bufio.Scanner, filterFn func(line int) bool) []string {
