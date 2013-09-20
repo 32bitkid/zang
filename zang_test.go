@@ -108,15 +108,22 @@ func TestProcessGitFullFile(t *testing.T) {
 		return nil
 	}
 
-	line := "```csharp|git|developing|file.txt```"
-	args, _ := parseAsGitCommand(line)
+	line := "<!-- {{csharp|git|developing|file.txt}} -->"
+	args, success := parseAsGitCommand(line)
+
+	if !success {
+		t.Errorf("Parse was not parsed correctly!")
+		return
+	}
+
 	processGit(&output, execGit, args)
 
 	// TODO this could probably be done better
-	expected := "```csharp\nline 1\n\tline 2\n\tline 3\nline 4\n```\n> Commit: developing  \n> File: file.txt  \n"
+	expected := "<!-- {{csharp|git|developing|file.txt}} -->\n<!-- Begin generated code reference. DO NOT EDIT -->\n```csharp\nline 1\n\tline 2\n\tline 3\nline 4\n```\n> Commit: developing  \n> File: file.txt  \n<!-- End generated code reference. -->\n"
 
 	if actual := output.String(); actual != expected {
-		t.Errorf("Expected result was not correct\n<<<\n%q\n---\n%q\n>>>\n", actual, expected)
+		t.Errorf("Expected result was not correct\n<<< Actual \n%q\n---\n%q\n>>> Expected\n", actual, expected)
+		return
 	}
 }
 
@@ -127,12 +134,18 @@ func TestProcessGitRange(t *testing.T) {
 		return nil
 	}
 
-	line := "```csharp|git|developing|file.txt:2:3```"
-	args, _ := parseAsGitCommand(line)
+	line := "<!-- {{csharp|git|developing|file.txt:2:3}} -->"
+	args, success := parseAsGitCommand(line)
+
+	if !success {
+		t.Errorf("Parse was not parsed correctly!")
+		return
+	}
+
 	processGit(&output, execGit, args)
 
 	// TODO this could probably be done better
-	expected := "```csharp\nline 2\nline 3\n```\n> Commit: developing  \n> File: file.txt  \n> Lines: 2 to 3  \n"
+	expected := "<!-- {{csharp|git|developing|file.txt:2:3}} -->\n<!-- Begin generated code reference. DO NOT EDIT -->\n```csharp\nline 2\nline 3\n```\n> Commit: developing  \n> File: file.txt  \n> Lines: 2 to 3  \n<!-- End generated code reference. -->\n"
 
 	if actual := output.String(); actual != expected {
 		t.Errorf("Expected result was not correct\n<<<\n%q\n---\n%q\n>>>\n", actual, expected)
@@ -146,12 +159,18 @@ func TestProcessGitSingleLine(t *testing.T) {
 		return nil
 	}
 
-	line := "```csharp|git|developing|file.txt:2```"
-	args, _ := parseAsGitCommand(line)
+	line := "<!-- {{csharp|git|developing|file.txt:2}} -->"
+	args, success := parseAsGitCommand(line)
+
+	if !success {
+		t.Errorf("Parse was not parsed correctly!")
+		return
+	}
+
 	processGit(&output, execGit, args)
 
 	// TODO this could probably be done better
-	expected := "```csharp\nline 2\n```\n> Commit: developing  \n> File: file.txt  \n> Line: 2  \n"
+	expected := "<!-- {{csharp|git|developing|file.txt:2}} -->\n<!-- Begin generated code reference. DO NOT EDIT -->\n```csharp\nline 2\n```\n> Commit: developing  \n> File: file.txt  \n> Line: 2  \n<!-- End generated code reference. -->\n"
 
 	if actual := output.String(); actual != expected {
 		t.Errorf("Expected result was not correct\n<<<\n%q\n---\n%q\n>>>\n", actual, expected)
