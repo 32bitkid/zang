@@ -135,29 +135,36 @@ func processFile(input *bufio.Scanner, output io.Writer, errorChannel chan<- err
 				return
 			}
 
-			if input.Scan() == false {
-				break
-			}
-
-			if input.Text() == beginMarker {
-				for input.Scan() {
-					if input.Text() == endMarker {
-						break
-					}
-				}
-			} else {
-				skipScan = true
-			}
-
 			if checkStaleFlag {
 				checkGitChanges(output, git, args)
 			}
+
+			skipScan = skipExistingCode(input)
 		} else {
 			fmt.Fprintln(output, text)
 		}
 	}
 
 	reportedError = input.Err()
+}
+
+func skipExistingCode(input *bufio.Scanner) bool {
+	// Scan the next line
+	if input.Scan() == false {
+		return false
+	}
+
+	// Check for a generated start marker
+	if input.Text() == beginMarker {
+		// Keep scanning until the end marker
+		for input.Scan() {
+			if input.Text() == endMarker {
+				return false
+			}
+		}
+	}
+
+	return true
 }
 
 func filterLines(scanner *bufio.Scanner, filterFn func(line int) bool) []string {
