@@ -38,7 +38,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
 	}
 
-	fmt.Printf("%v", time.Since(start))
+	fmt.Printf("%v\n", time.Since(start))
 }
 
 func modeSwitch(inName, outName string) error {
