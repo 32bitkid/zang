@@ -85,8 +85,9 @@ func execGit(cmdOutput *bytes.Buffer, args ...string) error {
 func processGit(output io.Writer, execGit execGitFn, args *GitCommandArgs) error {
 	var cmdOutput bytes.Buffer
 
+	fmt.Fprintln(output, args.source)
 	if err := gitShowFile(&cmdOutput, execGit, args.refspec, args.file); err == nil {
-		fmt.Fprintln(output, args.source)
+
 		fmt.Fprintf(output, startCodeGate, args.format)
 
 		cmdScanner := bufio.NewScanner(&cmdOutput)
