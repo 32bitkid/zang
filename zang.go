@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"flag"
 	"fmt"
 	"io"
@@ -58,12 +59,19 @@ func modeSwitch(inName, outName string) error {
 	}
 }
 
+type writeFileCommand struct {
+	fileName string
+	content  *bytes.Buffer
+}
+
 func dirMode(inFolder, outFolder string) error {
 
 	inFolder = filepath.Clean(inFolder)
 	outFolder = filepath.Clean(outFolder)
 
 	fileCount := 0
+
+	dataChannel := make(chan writeFileCommand)
 	errorChannel := make(chan error)
 
 	dirWalker := func(path string, info os.FileInfo, err error) error {
@@ -81,10 +89,9 @@ func dirMode(inFolder, outFolder string) error {
 			os.MkdirAll(filepath.Dir(destFile), os.ModePerm)
 
 			inFile := safeFile(os.Open, path, os.Stdin)
-			outFile := safeFile(os.Create, destFile, os.Stdout)
 
 			fileCount += 1
-			go processFile(bufio.NewScanner(inFile), outFile, errorChannel)
+			go processFile(bufio.NewScanner(inFile), destFile, dataChannel, errorChannel)
 		}
 		return err
 	}
@@ -92,8 +99,12 @@ func dirMode(inFolder, outFolder string) error {
 	walkErr := filepath.Walk(inFolder, dirWalker)
 
 	for errorIndex := 0; errorIndex < fileCount; errorIndex++ {
-		if err := <-errorChannel; err != nil {
+		select {
+		case err := <-errorChannel:
 			fmt.Fprintln(os.Stderr, err)
+		case writeCommand := <-dataChannel:
+			outFile := safeFile(os.Create, writeCommand.fileName, os.Stdout)
+			outFile.Write(writeCommand.content.Bytes())
 		}
 	}
 
@@ -101,23 +112,34 @@ func dirMode(inFolder, outFolder string) error {
 }
 
 func fileMode(inFileName, outFileName string) error {
-	var (
-		inFile  *os.File = safeFile(os.Open, inFileName, os.Stdin)
-		outFile *os.File = safeFile(os.Create, outFileName, os.Stdout)
-	)
+	var inFile *os.File = safeFile(os.Open, inFileName, os.Stdin)
+	//outFile *os.File = safeFile(os.Create, outFileName, os.Stdout)
 
+	dataChannel := make(chan writeFileCommand, 1)
 	errorChannel := make(chan error, 1)
 
-	go processFile(bufio.NewScanner(inFile), outFile, errorChannel)
+	go processFile(bufio.NewScanner(inFile), outFileName, dataChannel, errorChannel)
 
-	return <-errorChannel
+	select {
+	case err := <-errorChannel:
+		return err
+	case writeCommand := <-dataChannel:
+		outFile := safeFile(os.Create, writeCommand.fileName, os.Stdout)
+		outFile.Write(writeCommand.content.Bytes())
+		return nil
+	}
 }
 
-func processFile(input *bufio.Scanner, output io.Writer, errorChannel chan<- error) {
+func processFile(input *bufio.Scanner, outfile string, dataChannel chan<- writeFileCommand, errorChannel chan<- error) {
 	var reportedError error
+	var buffer bytes.Buffer
 
 	defer func() {
-		errorChannel <- reportedError
+		if reportedError == nil {
+			dataChannel <- writeFileCommand{fileName: outfile, content: &buffer}
+		} else {
+			errorChannel <- reportedError
+		}
 	}()
 
 	git := memoizeExecGitFn(execGit)
@@ -130,18 +152,18 @@ func processFile(input *bufio.Scanner, output io.Writer, errorChannel chan<- err
 		text := input.Text()
 
 		if args, success := parseAsGitCommand(text); success {
-			if err := processGit(output, git, args); err != nil {
+			if err := processGit(&buffer, git, args); err != nil {
 				reportedError = err
 				return
 			}
 
 			if checkStaleFlag {
-				checkGitChanges(output, git, args)
+				checkGitChanges(&buffer, git, args)
 			}
 
 			skipScan = skipExistingCode(input)
 		} else {
-			fmt.Fprintln(output, text)
+			fmt.Fprintln(&buffer, text)
 		}
 	}
 
