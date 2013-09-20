@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 	"unicode"
 )
@@ -114,8 +113,6 @@ func fileMode(inFileName, outFileName string) error {
 	return <-errorChannel
 }
 
-const codeMarker = "```"
-
 func processFile(input *bufio.Scanner, output io.Writer, errorChannel chan<- error) {
 	var reportedError error
 
@@ -142,9 +139,9 @@ func processFile(input *bufio.Scanner, output io.Writer, errorChannel chan<- err
 				break
 			}
 
-			if strings.HasPrefix(input.Text(), codeMarker) {
+			if input.Text() == beginMarker {
 				for input.Scan() {
-					if strings.HasPrefix(input.Text(), codeMarker) {
+					if input.Text() == endMarker {
 						break
 					}
 				}

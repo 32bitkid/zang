@@ -26,6 +26,8 @@ const (
 	linesRefBlock  string = "> Lines: %d to %d  \n"
 	lineRefBlock   string = "> Line: %d  \n"
 	staleRefBlock  string = "> *WARNING* This file has changed since the referenced commit. This documentation may be out of date. \n"
+	beginMarker    string = "<!-- Begin generated code reference. DO NOT EDIT -->"
+	endMarker      string = "<!-- End generated code reference. -->"
 )
 
 func memoizeExecGitFn(fn execGitFn) execGitFn {
@@ -86,6 +88,12 @@ func processGit(output io.Writer, execGit execGitFn, args *GitCommandArgs) error
 	var cmdOutput bytes.Buffer
 
 	fmt.Fprintln(output, args.source)
+	fmt.Fprintln(output, beginMarker)
+
+	defer func() {
+		fmt.Fprintln(output, endMarker)
+	}()
+
 	if err := gitShowFile(&cmdOutput, execGit, args.refspec, args.file); err == nil {
 
 		fmt.Fprintf(output, startCodeGate, args.format)
