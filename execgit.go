@@ -128,7 +128,7 @@ func checkGitChanges(output io.Writer, git execGitFn, args *GitCommandArgs) bool
 			return true
 		}
 	} else {
-		fmt.Fprintf(os.Stderr, "WARN: Unable to get history of %s.\n", args.file)
+		fmt.Fprintf(os.Stderr, "WARN: Unable to get history of \"%s\".\n", args.file)
 	}
 	return false
 }
