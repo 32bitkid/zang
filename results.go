@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"os"
-	"path/filepath"
 )
 
 type Result interface {
@@ -19,17 +18,15 @@ func (e ErrorResult) Execute() error {
 }
 
 type WriteFileResult struct {
-	fileName string
-	content  *bytes.Buffer
+	getFile func() (*os.File, error)
+	content *bytes.Buffer
 }
 
 func (w WriteFileResult) Execute() error {
-	cleanFileName := filepath.Clean(w.fileName)
+	file, fileError := w.getFile()
 
-	file, fileErr := os.Create(cleanFileName)
-
-	if fileErr != nil {
-		return fileErr
+	if fileError != nil {
+		return fileError
 	}
 
 	defer func() {

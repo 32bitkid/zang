@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -30,6 +31,7 @@ func main() {
 	start := time.Now()
 	if err := modeSwitch(flag.Arg(0), flag.Arg(1)); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+		os.Exit(1)
 	}
 
 	fmt.Printf("%v\n", time.Since(start))
@@ -38,19 +40,41 @@ func main() {
 func modeSwitch(inName, outName string) error {
 
 	if len(inName) == 0 {
-		return fileMode(inName, outName)
+		return pipeMode()
 	}
 
-	fileInfo, statErr := os.Stat(inName)
+	if len(outName) == 0 {
+		return errors.New("no output file provided")
+	}
+
+	inputFileInfo, statErr := os.Stat(inName)
 	if statErr != nil {
 		return statErr
 	}
 
-	if fileInfo.IsDir() {
+	if inputFileInfo.IsDir() {
 		return dirMode(inName, outName)
 	} else {
 		return fileMode(inName, outName)
 	}
+}
+
+func deferredCreate(filename string) func() (*os.File, error) {
+	return func() (*os.File, error) {
+		return os.Create(filepath.Clean(filename))
+	}
+}
+
+func getStdout() (*os.File, error) {
+	return os.Stdout, nil
+}
+
+func pipeMode() error {
+	resultChannel := make(chan Result, 1)
+
+	go processFile(os.Stdin, getStdout, resultChannel)
+
+	return (<-resultChannel).Execute()
 }
 
 func dirMode(inFolder, outFolder string) error {
@@ -66,6 +90,12 @@ func dirMode(inFolder, outFolder string) error {
 
 		if filepath.Ext(path) == ".md" {
 
+			inFile, openErr := os.Open(path)
+
+			if openErr != nil {
+				return openErr
+			}
+
 			relativePath, relErr := filepath.Rel(inFolder, path)
 
 			if relErr != nil {
@@ -73,13 +103,11 @@ func dirMode(inFolder, outFolder string) error {
 			}
 
 			destFile := filepath.Join(outFolder, relativePath)
-
 			os.MkdirAll(filepath.Dir(destFile), os.ModePerm)
 
-			inFile := safeFile(os.Open, path, os.Stdin)
-
 			expectedResults += 1
-			go processFile(bufio.NewScanner(inFile), destFile, resultChannel)
+
+			go processFile(inFile, deferredCreate(destFile), resultChannel)
 		}
 		return err
 	}
@@ -96,22 +124,30 @@ func dirMode(inFolder, outFolder string) error {
 }
 
 func fileMode(inFileName, outFileName string) error {
-	var inFile *os.File = safeFile(os.Open, inFileName, os.Stdin)
+
+	inFile, openErr := os.Open(inFileName)
+
+	if openErr != nil {
+		return openErr
+	}
 
 	resultChannel := make(chan Result, 1)
 
-	go processFile(bufio.NewScanner(inFile), outFileName, resultChannel)
+	go processFile(inFile, deferredCreate(outFileName), resultChannel)
 
 	return (<-resultChannel).Execute()
 }
 
-func processFile(input *bufio.Scanner, outfile string, resultChannel chan<- Result) {
+func processFile(in *os.File, getOutFile func() (*os.File, error), resultChannel chan<- Result) {
+
+	input := bufio.NewScanner(in)
+
 	var reportedError error
 	var buffer bytes.Buffer
 
 	defer func() {
 		if reportedError == nil {
-			resultChannel <- WriteFileResult{fileName: outfile, content: &buffer}
+			resultChannel <- WriteFileResult{getFile: getOutFile, content: &buffer}
 		} else {
 			resultChannel <- ErrorResult{reportedError}
 		}
@@ -215,22 +251,4 @@ func calculateAmountToTrim(lines []string) int {
 	}
 
 	return amountToTrim
-}
-
-func safeFile(method func(string) (*os.File, error), fileName string, defaultFile *os.File) *os.File {
-
-	if len(fileName) == 0 {
-		return defaultFile
-	}
-
-	cleanFileName := filepath.Clean(fileName)
-
-	file, fileErr := method(cleanFileName)
-
-	if fileErr != nil {
-		fmt.Fprintf(os.Stderr, "Could not open file \"%s\"\n", cleanFileName)
-		os.Exit(1)
-	}
-
-	return file
 }
