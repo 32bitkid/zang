@@ -59,13 +59,13 @@ func modeSwitch(inName, outName string) error {
 	}
 }
 
-func deferredCreate(filename string) func() (*os.File, error) {
-	return func() (*os.File, error) {
+func deferredCreate(filename string) func() (io.WriteCloser, error) {
+	return func() (io.WriteCloser, error) {
 		return os.Create(filepath.Clean(filename))
 	}
 }
 
-func getStdout() (*os.File, error) {
+func getStdout() (io.WriteCloser, error) {
 	return os.Stdout, nil
 }
 
@@ -87,7 +87,6 @@ func dirMode(inFolder, outFolder string) error {
 	resultChannel := make(chan Result)
 
 	dirWalker := func(path string, info os.FileInfo, err error) error {
-
 		if filepath.Ext(path) == ".md" {
 			expectedResults += 1
 			go handleMarkdown(path, inFolder, outFolder, resultChannel)
@@ -155,7 +154,7 @@ func fileMode(inFileName, outFileName string) error {
 	return (<-resultChannel).Execute()
 }
 
-func processFile(in *os.File, getOutFile func() (*os.File, error), resultChannel chan<- Result) {
+func processFile(in io.Reader, getOutFile func() (io.WriteCloser, error), resultChannel chan<- Result) {
 	var buffer bytes.Buffer
 	var err error
 

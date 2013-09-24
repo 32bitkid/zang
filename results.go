@@ -2,7 +2,7 @@ package main
 
 import (
 	"bytes"
-	"os"
+	"io"
 )
 
 type Result interface {
@@ -18,7 +18,7 @@ func (e ErrorResult) Execute() error {
 }
 
 type WriteFileResult struct {
-	getFile func() (*os.File, error)
+	getFile func() (io.WriteCloser, error)
 	content *bytes.Buffer
 }
 
