@@ -113,7 +113,7 @@ func processGit(output io.Writer, execGit execGitFn, args *GitCommandArgs) error
 		}
 		return nil
 	} else {
-		return errors.New(cmdOutput.String())
+		return errors.New(strings.TrimRight(cmdOutput.String(), "\r\n"))
 	}
 }
 
