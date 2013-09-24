@@ -3,10 +3,8 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
-	"os"
 	"os/exec"
 	"strings"
 )
@@ -19,17 +17,30 @@ type (
 	}
 )
 
-const (
-	startCodeGate  string = "```%s\n"
-	endCodeGate    string = "```\n"
-	commitRefBlock string = "> Commit: %s  \n"
-	fileRefBlock   string = "> File: %s  \n"
-	linesRefBlock  string = "> Lines: %d to %d  \n"
-	lineRefBlock   string = "> Line: %d  \n"
-	staleRefBlock  string = "> *WARNING* This file has changed since the referenced commit. This documentation may be out of date. \n"
-	beginMarker    string = "<!-- Begin generated code reference. DO NOT EDIT -->"
-	endMarker      string = "<!-- End generated code reference. -->"
-)
+// Retrieve the file contents from git
+func (exec execGitFn) showFile(result io.Writer, refspec, file string) error {
+	fileRef := fmt.Sprintf(`%s:%s`, refspec, file)
+	return exec(result, `show`, fileRef)
+}
+
+// Retrieve the list of files that have changed between commit1 and commit2
+func (exec execGitFn) changedFiles(commit1, commit2 string) (map[string]bool, error) {
+	var result bytes.Buffer
+
+	lookupTable := make(map[string]bool)
+
+	error := exec(&result, `diff`, `--name-only`, commit1, commit2)
+
+	if error == nil {
+		scanner := bufio.NewScanner(&result)
+		for scanner.Scan() {
+			lookupTable[scanner.Text()] = true
+		}
+
+	}
+
+	return lookupTable, error
+}
 
 func memoizeExecGitFn(fn execGitFn) execGitFn {
 
@@ -52,29 +63,6 @@ func memoizeExecGitFn(fn execGitFn) execGitFn {
 	}
 }
 
-func gitShowFile(result io.Writer, exec execGitFn, refspec, file string) error {
-	fileRef := fmt.Sprintf(`%s:%s`, refspec, file)
-	return exec(result, `show`, fileRef)
-}
-
-func gitChangedFiles(exec execGitFn, commit1, commit2 string) (map[string]bool, error) {
-	var result bytes.Buffer
-
-	lookupTable := make(map[string]bool)
-
-	error := exec(&result, `diff`, `--name-only`, commit1, commit2)
-
-	if error == nil {
-		scanner := bufio.NewScanner(&result)
-		for scanner.Scan() {
-			lookupTable[scanner.Text()] = true
-		}
-
-	}
-
-	return lookupTable, error
-}
-
 func execGit(cmdOutput io.Writer, args ...string) error {
 	cmd := exec.Command(`git`, args...)
 
@@ -84,51 +72,4 @@ func execGit(cmdOutput io.Writer, args ...string) error {
 	cmd.Stderr = cmdOutput
 
 	return cmd.Run()
-}
-
-func processGit(output io.Writer, execGit execGitFn, args *GitCommandArgs) error {
-	var cmdOutput bytes.Buffer
-
-	fmt.Fprintln(output, args.source)
-	fmt.Fprintln(output, beginMarker)
-
-	defer func() {
-		fmt.Fprintln(output, endMarker)
-	}()
-
-	if err := gitShowFile(&cmdOutput, execGit, args.refspec, args.file); err == nil {
-
-		fmt.Fprintf(output, startCodeGate, args.format)
-
-		cmdScanner := bufio.NewScanner(&cmdOutput)
-		writeTrimmedLines(output, filterLines(cmdScanner, args.displayLine)...)
-
-		fmt.Fprint(output, endCodeGate)
-		fmt.Fprintf(output, commitRefBlock, args.refspec)
-		fmt.Fprintf(output, fileRefBlock, args.file)
-
-		if args.hasFrom && !args.hasTo {
-			fmt.Fprintf(output, lineRefBlock, args.from)
-		} else if args.hasFrom && args.hasTo {
-			fmt.Fprintf(output, linesRefBlock, args.from, args.to)
-		}
-		return nil
-	} else {
-		return errors.New(strings.TrimRight(cmdOutput.String(), "\r\n"))
-	}
-}
-
-func checkGitChanges(output io.Writer, git execGitFn, args *GitCommandArgs) bool {
-
-	results, error := gitChangedFiles(git, args.refspec, headFlag)
-	if error == nil {
-		if _, exists := results[args.file]; exists {
-			fmt.Fprintf(os.Stderr, "WARN: \"%s\" has changed since %s. This documentation may be out of date.\n", args.file, args.refspec)
-			fmt.Fprintf(output, staleRefBlock)
-			return true
-		}
-	} else {
-		fmt.Fprintf(os.Stderr, "WARN: Unable to get history of \"%s\".\n", args.file)
-	}
-	return false
 }

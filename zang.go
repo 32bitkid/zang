@@ -168,13 +168,13 @@ func processFile(in io.Reader, getOutFile func() (io.WriteCloser, error), result
 		text := input.Text()
 
 		if args, success := parseAsGitCommand(text); success {
-			if err = processGit(&buffer, git, args); err != nil {
+			if err = args.process(&buffer, git); err != nil {
 				resultChannel <- ErrorResult{err}
 				return
 			}
 
 			if checkStaleFlag {
-				checkGitChanges(&buffer, git, args)
+				args.checkGitChanges(&buffer, git)
 			}
 
 			if skipScan, err = skipExistingCode(input); err != nil {

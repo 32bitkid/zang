@@ -117,7 +117,7 @@ func TestProcessGitFullFile(t *testing.T) {
 		return
 	}
 
-	processGit(&output, execGit, args)
+	args.process(&output, execGit)
 
 	// TODO this could probably be done better
 	expected := "<!-- {{csharp|git|developing|file.txt}} -->\n<!-- Begin generated code reference. DO NOT EDIT -->\n```csharp\nline 1\n\tline 2\n\tline 3\nline 4\n```\n> Commit: developing  \n> File: file.txt  \n<!-- End generated code reference. -->\n"
@@ -143,7 +143,7 @@ func TestProcessGitRange(t *testing.T) {
 		return
 	}
 
-	processGit(&output, execGit, args)
+	args.process(&output, execGit)
 
 	// TODO this could probably be done better
 	expected := "<!-- {{csharp|git|developing|file.txt:2:3}} -->\n<!-- Begin generated code reference. DO NOT EDIT -->\n```csharp\nline 2\nline 3\n```\n> Commit: developing  \n> File: file.txt  \n> Lines: 2 to 3  \n<!-- End generated code reference. -->\n"
@@ -168,7 +168,7 @@ func TestProcessGitSingleLine(t *testing.T) {
 		return
 	}
 
-	processGit(&output, execGit, args)
+	args.process(&output, execGit)
 
 	// TODO this could probably be done better
 	expected := "<!-- {{csharp|git|developing|file.txt:2}} -->\n<!-- Begin generated code reference. DO NOT EDIT -->\n```csharp\nline 2\n```\n> Commit: developing  \n> File: file.txt  \n> Line: 2  \n<!-- End generated code reference. -->\n"
