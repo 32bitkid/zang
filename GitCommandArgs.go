@@ -120,6 +120,7 @@ func filterLines(scanner TextScanner, filterFn func(line int) bool) []string {
 		if filterFn(line) {
 			text := scanner.Text()
 
+			// TODO This might not be necessary
 			if line == 1 && text[0] == '\xEF' && text[1] == '\xBB' && text[2] == '\xBF' {
 				text = text[3:]
 			}
