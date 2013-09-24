@@ -41,7 +41,7 @@ func (args *GitCommandArgs) displayLine(line int) bool {
 		args.hasFrom && args.hasTo && line >= args.from && line <= args.to
 }
 
-func (args *GitCommandArgs) process(output io.Writer, execGit execGitFn) error {
+func (args *GitCommandArgs) process(output io.Writer, execGit ExecGitFn) error {
 	var cmdOutput bytes.Buffer
 
 	fmt.Fprintln(output, args.source)
@@ -73,7 +73,7 @@ func (args *GitCommandArgs) process(output io.Writer, execGit execGitFn) error {
 	}
 }
 
-func (args *GitCommandArgs) checkGitChanges(output io.Writer, git execGitFn) bool {
+func (args *GitCommandArgs) checkGitChanges(output io.Writer, git ExecGitFn) bool {
 
 	results, error := git.changedFiles(args.refspec, headFlag)
 	if error == nil {

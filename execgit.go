@@ -10,7 +10,7 @@ import (
 )
 
 type (
-	execGitFn    func(io.Writer, ...string) error
+	ExecGitFn    func(io.Writer, ...string) error
 	cachedResult struct {
 		reader io.Reader
 		error
@@ -18,13 +18,13 @@ type (
 )
 
 // Retrieve the file contents from git
-func (exec execGitFn) showFile(result io.Writer, refspec, file string) error {
+func (exec ExecGitFn) showFile(result io.Writer, refspec, file string) error {
 	fileRef := fmt.Sprintf(`%s:%s`, refspec, file)
 	return exec(result, `show`, fileRef)
 }
 
 // Retrieve the list of files that have changed between commit1 and commit2
-func (exec execGitFn) changedFiles(commit1, commit2 string) (map[string]bool, error) {
+func (exec ExecGitFn) changedFiles(commit1, commit2 string) (map[string]bool, error) {
 	var result bytes.Buffer
 
 	lookupTable := make(map[string]bool)
@@ -42,7 +42,7 @@ func (exec execGitFn) changedFiles(commit1, commit2 string) (map[string]bool, er
 	return lookupTable, error
 }
 
-func memoizeExecGitFn(fn execGitFn) execGitFn {
+func memoizeExecGitFn(fn ExecGitFn) ExecGitFn {
 
 	cache := make(map[string]cachedResult)
 
