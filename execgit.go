@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -112,8 +113,7 @@ func processGit(output io.Writer, execGit execGitFn, args *GitCommandArgs) error
 		}
 		return nil
 	} else {
-		fmt.Fprintf(output, "    Unable to render code: %s\n", cmdOutput.String())
-		return err
+		return errors.New(cmdOutput.String())
 	}
 }
 
