@@ -16,18 +16,12 @@ var (
 	repoFlag       string
 	headFlag       string
 	checkStaleFlag bool
-
-	inFlag  string
-	outFlag string
 )
 
 func init() {
 	flag.StringVar(&repoFlag, "repo", "", "the path to the repository")
 	flag.StringVar(&headFlag, "head", "master", "the commit to check for stale documentation")
 	flag.BoolVar(&checkStaleFlag, "check", true, "search the repository for changes since the documentation was written")
-
-	flag.StringVar(&inFlag, "in", "", "input folder to process")
-	flag.StringVar(&outFlag, "out", "", "output folder")
 }
 
 func main() {
