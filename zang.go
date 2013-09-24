@@ -95,10 +95,11 @@ func dirMode(inFolder, outFolder string) error {
 
 	walkErr := filepath.Walk(inFolder, dirWalker)
 
-	for resultIndex := 0; resultIndex < expectedResults; resultIndex++ {
+	for expectedResults > 0 {
 		if err := (<-resultChannel).Execute(); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 		}
+		expectedResults--
 	}
 
 	return walkErr
