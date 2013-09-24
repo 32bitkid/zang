@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"time"
-	"unicode"
 )
 
 var (
@@ -193,7 +192,7 @@ func processFile(in io.Reader, getOutFile func() (io.WriteCloser, error), result
 	}
 }
 
-func skipExistingCode(input *bufio.Scanner) (bool, error) {
+func skipExistingCode(input TextScanner) (bool, error) {
 	// Scan the next line
 	if input.Scan() == false {
 		return false, nil
@@ -213,57 +212,4 @@ func skipExistingCode(input *bufio.Scanner) (bool, error) {
 
 	// Something went wrong, and we reached the end of the file.
 	return false, errors.New("End marker was not found before end of file...")
-}
-
-func filterLines(scanner *bufio.Scanner, filterFn func(line int) bool) []string {
-	lines := make([]string, 0, 30)
-
-	for line := 1; scanner.Scan(); line++ {
-		if filterFn(line) {
-			text := scanner.Text()
-
-			if line == 1 && text[0] == '\xEF' && text[1] == '\xBB' && text[2] == '\xBF' {
-				text = text[3:]
-			}
-
-			lines = append(lines, text)
-		}
-	}
-
-	return lines
-}
-
-func writeTrimmedLines(output io.Writer, lines ...string) {
-	trimAmount := calculateAmountToTrim(lines)
-
-	for _, str := range lines {
-		if len(str) <= trimAmount {
-			fmt.Fprintln(output, str)
-		} else {
-			fmt.Fprintln(output, str[trimAmount:])
-		}
-	}
-}
-
-func calculateAmountToTrim(lines []string) int {
-	amountToTrim := int(^uint(0) >> 1)
-
-	for _, lineContent := range lines {
-		for characterPosition, rune := range lineContent {
-			if characterPosition >= amountToTrim {
-				break
-			}
-			if !unicode.IsSpace(rune) {
-				if amountToTrim > characterPosition {
-					amountToTrim = characterPosition
-				}
-				break
-			}
-		}
-		if amountToTrim == 0 {
-			break
-		}
-	}
-
-	return amountToTrim
 }
