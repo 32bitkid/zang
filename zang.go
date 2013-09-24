@@ -59,20 +59,14 @@ func modeSwitch(inName, outName string) error {
 	}
 }
 
-type writeFileCommand struct {
-	fileName string
-	content  *bytes.Buffer
-}
-
 func dirMode(inFolder, outFolder string) error {
 
 	inFolder = filepath.Clean(inFolder)
 	outFolder = filepath.Clean(outFolder)
 
-	fileCount := 0
+	expectedResults := 0
 
-	dataChannel := make(chan writeFileCommand)
-	errorChannel := make(chan error)
+	resultChannel := make(chan Result)
 
 	dirWalker := func(path string, info os.FileInfo, err error) error {
 
@@ -90,21 +84,17 @@ func dirMode(inFolder, outFolder string) error {
 
 			inFile := safeFile(os.Open, path, os.Stdin)
 
-			fileCount += 1
-			go processFile(bufio.NewScanner(inFile), destFile, dataChannel, errorChannel)
+			expectedResults += 1
+			go processFile(bufio.NewScanner(inFile), destFile, resultChannel)
 		}
 		return err
 	}
 
 	walkErr := filepath.Walk(inFolder, dirWalker)
 
-	for errorIndex := 0; errorIndex < fileCount; errorIndex++ {
-		select {
-		case err := <-errorChannel:
+	for resultIndex := 0; resultIndex < expectedResults; resultIndex++ {
+		if err := (<-resultChannel).Execute(); err != nil {
 			fmt.Fprintln(os.Stderr, err)
-		case writeCommand := <-dataChannel:
-			outFile := safeFile(os.Create, writeCommand.fileName, os.Stdout)
-			outFile.Write(writeCommand.content.Bytes())
 		}
 	}
 
@@ -113,32 +103,23 @@ func dirMode(inFolder, outFolder string) error {
 
 func fileMode(inFileName, outFileName string) error {
 	var inFile *os.File = safeFile(os.Open, inFileName, os.Stdin)
-	//outFile *os.File = safeFile(os.Create, outFileName, os.Stdout)
 
-	dataChannel := make(chan writeFileCommand, 1)
-	errorChannel := make(chan error, 1)
+	resultChannel := make(chan Result, 1)
 
-	go processFile(bufio.NewScanner(inFile), outFileName, dataChannel, errorChannel)
+	go processFile(bufio.NewScanner(inFile), outFileName, resultChannel)
 
-	select {
-	case err := <-errorChannel:
-		return err
-	case writeCommand := <-dataChannel:
-		outFile := safeFile(os.Create, writeCommand.fileName, os.Stdout)
-		outFile.Write(writeCommand.content.Bytes())
-		return nil
-	}
+	return (<-resultChannel).Execute()
 }
 
-func processFile(input *bufio.Scanner, outfile string, dataChannel chan<- writeFileCommand, errorChannel chan<- error) {
+func processFile(input *bufio.Scanner, outfile string, resultChannel chan<- Result) {
 	var reportedError error
 	var buffer bytes.Buffer
 
 	defer func() {
 		if reportedError == nil {
-			dataChannel <- writeFileCommand{fileName: outfile, content: &buffer}
+			resultChannel <- WriteFileResult{fileName: outfile, content: &buffer}
 		} else {
-			errorChannel <- reportedError
+			resultChannel <- ErrorResult{reportedError}
 		}
 	}()
 
