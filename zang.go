@@ -127,6 +127,10 @@ func fileMode(inFileName, outFileName string) error {
 
 	inFile, openErr := os.Open(inFileName)
 
+	defer func() {
+		inFile.Close()
+	}()
+
 	if openErr != nil {
 		return openErr
 	}
