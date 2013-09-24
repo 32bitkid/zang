@@ -12,9 +12,9 @@ import (
 )
 
 type (
-	execGitFn    func(*bytes.Buffer, ...string) error
+	execGitFn    func(io.Writer, ...string) error
 	cachedResult struct {
-		string
+		reader io.Reader
 		error
 	}
 )
@@ -35,22 +35,24 @@ func memoizeExecGitFn(fn execGitFn) execGitFn {
 
 	cache := make(map[string]cachedResult)
 
-	return func(buffer *bytes.Buffer, args ...string) error {
+	return func(writer io.Writer, args ...string) error {
 		key := strings.Join(args, " ")
 		val, exists := cache[key]
 
-		if exists {
-			buffer.WriteString(val.string)
-			return val.error
-		} else {
-			error := fn(buffer, args...)
-			cache[key] = cachedResult{buffer.String(), error}
-			return error
+		if !exists {
+			var buffer bytes.Buffer
+			error := fn(&buffer, args...)
+
+			val = cachedResult{&buffer, error}
+			cache[key] = val
 		}
+
+		io.Copy(writer, val.reader)
+		return val.error
 	}
 }
 
-func gitShowFile(result *bytes.Buffer, exec execGitFn, refspec, file string) error {
+func gitShowFile(result io.Writer, exec execGitFn, refspec, file string) error {
 	fileRef := fmt.Sprintf(`%s:%s`, refspec, file)
 	return exec(result, `show`, fileRef)
 }
@@ -73,7 +75,7 @@ func gitChangedFiles(exec execGitFn, commit1, commit2 string) (map[string]bool, 
 	return lookupTable, error
 }
 
-func execGit(cmdOutput *bytes.Buffer, args ...string) error {
+func execGit(cmdOutput io.Writer, args ...string) error {
 	cmd := exec.Command(`git`, args...)
 
 	cmd.Dir = repoFlag

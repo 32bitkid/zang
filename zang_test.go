@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"io"
 	"testing"
 )
 
@@ -103,8 +104,8 @@ func TestFilterLines(t *testing.T) {
 
 func TestProcessGitFullFile(t *testing.T) {
 	var output bytes.Buffer
-	execGit := func(cmdOutput *bytes.Buffer, args ...string) error {
-		cmdOutput.WriteString(testFile)
+	execGit := func(cmdOutput io.Writer, args ...string) error {
+		io.WriteString(cmdOutput, testFile)
 		return nil
 	}
 
@@ -129,8 +130,8 @@ func TestProcessGitFullFile(t *testing.T) {
 
 func TestProcessGitRange(t *testing.T) {
 	var output bytes.Buffer
-	execGit := func(cmdOutput *bytes.Buffer, args ...string) error {
-		cmdOutput.WriteString(testFile)
+	execGit := func(cmdOutput io.Writer, args ...string) error {
+		io.WriteString(cmdOutput, testFile)
 		return nil
 	}
 
@@ -154,8 +155,8 @@ func TestProcessGitRange(t *testing.T) {
 
 func TestProcessGitSingleLine(t *testing.T) {
 	var output bytes.Buffer
-	execGit := func(cmdOutput *bytes.Buffer, args ...string) error {
-		cmdOutput.WriteString(testFile)
+	execGit := func(cmdOutput io.Writer, args ...string) error {
+		io.WriteString(cmdOutput, testFile)
 		return nil
 	}
 
