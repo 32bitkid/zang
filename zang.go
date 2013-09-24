@@ -89,25 +89,8 @@ func dirMode(inFolder, outFolder string) error {
 	dirWalker := func(path string, info os.FileInfo, err error) error {
 
 		if filepath.Ext(path) == ".md" {
-
-			inFile, openErr := os.Open(path)
-
-			if openErr != nil {
-				return openErr
-			}
-
-			relativePath, relErr := filepath.Rel(inFolder, path)
-
-			if relErr != nil {
-				return relErr
-			}
-
-			destFile := filepath.Join(outFolder, relativePath)
-			os.MkdirAll(filepath.Dir(destFile), os.ModePerm)
-
 			expectedResults += 1
-
-			go processFile(inFile, deferredCreate(destFile), resultChannel)
+			go handleMarkdown(path, inFolder, outFolder, resultChannel)
 		}
 		return err
 	}
@@ -121,6 +104,36 @@ func dirMode(inFolder, outFolder string) error {
 	}
 
 	return walkErr
+}
+
+func handleMarkdown(path, inFolder, outFolder string, resultChannel chan<- Result) {
+
+	var inFile *os.File
+	var relativePath string
+	var err error
+
+	if inFile, err = os.Open(path); err != nil {
+		resultChannel <- ErrorResult{err}
+		return
+	}
+
+	defer func() {
+		inFile.Close()
+	}()
+
+	if relativePath, err = filepath.Rel(inFolder, path); err != nil {
+		resultChannel <- ErrorResult{err}
+		return
+	}
+
+	destFile := filepath.Join(outFolder, relativePath)
+
+	if err = os.MkdirAll(filepath.Dir(destFile), os.ModePerm); err != nil {
+		resultChannel <- ErrorResult{err}
+		return
+	}
+
+	processFile(inFile, deferredCreate(destFile), resultChannel)
 }
 
 func fileMode(inFileName, outFileName string) error {
