@@ -143,22 +143,11 @@ func fileMode(inFileName, outFileName string) error {
 }
 
 func processFile(in *os.File, getOutFile func() (*os.File, error), resultChannel chan<- Result) {
+	var buffer bytes.Buffer
+	var err error
 
 	input := bufio.NewScanner(in)
-
-	var reportedError error
-	var buffer bytes.Buffer
-
-	defer func() {
-		if reportedError == nil {
-			resultChannel <- WriteFileResult{getFile: getOutFile, content: &buffer}
-		} else {
-			resultChannel <- ErrorResult{reportedError}
-		}
-	}()
-
 	git := memoizeExecGitFn(execGit)
-
 	skipScan := false
 
 	for skipScan || input.Scan() {
@@ -167,8 +156,8 @@ func processFile(in *os.File, getOutFile func() (*os.File, error), resultChannel
 		text := input.Text()
 
 		if args, success := parseAsGitCommand(text); success {
-			if err := processGit(&buffer, git, args); err != nil {
-				reportedError = err
+			if err = processGit(&buffer, git, args); err != nil {
+				resultChannel <- ErrorResult{err}
 				return
 			}
 
@@ -176,32 +165,42 @@ func processFile(in *os.File, getOutFile func() (*os.File, error), resultChannel
 				checkGitChanges(&buffer, git, args)
 			}
 
-			skipScan = skipExistingCode(input)
+			if skipScan, err = skipExistingCode(input); err != nil {
+				resultChannel <- ErrorResult{err}
+			}
+
 		} else {
 			fmt.Fprintln(&buffer, text)
 		}
 	}
 
-	reportedError = input.Err()
+	if err := input.Err(); err != nil {
+		resultChannel <- ErrorResult{err}
+	} else {
+		resultChannel <- WriteFileResult{getFile: getOutFile, content: &buffer}
+	}
 }
 
-func skipExistingCode(input *bufio.Scanner) bool {
+func skipExistingCode(input *bufio.Scanner) (bool, error) {
 	// Scan the next line
 	if input.Scan() == false {
-		return false
+		return false, nil
 	}
 
 	// Check for a generated start marker
-	if input.Text() == beginMarker {
-		// Keep scanning until the end marker
-		for input.Scan() {
-			if input.Text() == endMarker {
-				return false
-			}
+	if input.Text() != beginMarker {
+		return true, nil
+	}
+
+	// Keep scanning until the end marker
+	for input.Scan() {
+		if input.Text() == endMarker {
+			return false, nil
 		}
 	}
 
-	return true
+	// Something went wrong, and we reached the end of the file.
+	return false, errors.New("End marker was not found before end of file...")
 }
 
 func filterLines(scanner *bufio.Scanner, filterFn func(line int) bool) []string {
