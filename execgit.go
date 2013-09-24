@@ -47,7 +47,6 @@ func memoizeExecGitFn(fn execGitFn) execGitFn {
 			cache[key] = cachedResult{buffer.String(), error}
 			return error
 		}
-
 	}
 }
 
