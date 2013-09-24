@@ -44,7 +44,7 @@ func modeSwitch(inName, outName string) error {
 	}
 
 	if len(outName) == 0 {
-		return errors.New("no output file provided")
+		return errors.New("A output file must be provided")
 	}
 
 	inputFileInfo, statErr := os.Stat(inName)
