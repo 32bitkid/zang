@@ -69,7 +69,7 @@ func getStdout() (io.WriteCloser, error) {
 }
 
 func pipeMode() error {
-	resultChannel := make(chan Result, 1)
+	resultChannel := make(chan Result)
 
 	go processFile(os.Stdin, getStdout, resultChannel)
 
@@ -147,7 +147,7 @@ func fileMode(inFileName, outFileName string) error {
 		return openErr
 	}
 
-	resultChannel := make(chan Result, 1)
+	resultChannel := make(chan Result)
 
 	go processFile(inFile, deferredCreate(outFileName), resultChannel)
 
