@@ -159,7 +159,9 @@ func processFile(in io.Reader, getOutFile func() (io.WriteCloser, error), result
 	var err error
 
 	input := bufio.NewScanner(in)
-	git := memoizeExecGitFn(execGit)
+
+	git := execGit.memoize()
+
 	skipScan := false
 
 	for skipScan || input.Scan() {

@@ -42,7 +42,7 @@ func (exec ExecGitFn) changedFiles(commit1, commit2 string) (map[string]bool, er
 	return lookupTable, error
 }
 
-func memoizeExecGitFn(fn ExecGitFn) ExecGitFn {
+func (fn ExecGitFn) memoize() ExecGitFn {
 
 	cache := make(map[string]cachedResult)
 
@@ -63,7 +63,7 @@ func memoizeExecGitFn(fn ExecGitFn) ExecGitFn {
 	}
 }
 
-func execGit(cmdOutput io.Writer, args ...string) error {
+var execGit ExecGitFn = func(cmdOutput io.Writer, args ...string) error {
 	cmd := exec.Command(`git`, args...)
 
 	cmd.Dir = repoFlag
