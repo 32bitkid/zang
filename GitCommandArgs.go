@@ -10,7 +10,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"unicode"
 )
 
 const (
@@ -57,7 +56,7 @@ func (args *GitCommandArgs) process(output io.Writer, execGit ExecGitFn) error {
 		fmt.Fprintf(output, startCodeGate, args.format)
 
 		cmdScanner := bufio.NewScanner(&cmdOutput)
-		writeTrimmedLines(output, filterLines(cmdScanner, args.displayLine)...)
+		filterLines(cmdScanner, args.displayLine).writeTrimmedTo(output)
 
 		fmt.Fprint(output, endCodeGate)
 		fmt.Fprintf(output, commitRefBlock, args.refspec)
@@ -109,60 +108,4 @@ func parseAsGitCommand(text string) (*GitCommandArgs, bool) {
 	} else {
 		return new(GitCommandArgs), false
 	}
-}
-
-// Helper functions to filter and trim lines
-
-func filterLines(scanner TextScanner, filterFn func(line int) bool) []string {
-	lines := make([]string, 0, 30)
-
-	for line := 1; scanner.Scan(); line++ {
-		if filterFn(line) {
-			text := scanner.Text()
-
-			// TODO This might not be necessary
-			if line == 1 && text[0] == '\xEF' && text[1] == '\xBB' && text[2] == '\xBF' {
-				text = text[3:]
-			}
-
-			lines = append(lines, text)
-		}
-	}
-
-	return lines
-}
-
-func writeTrimmedLines(output io.Writer, lines ...string) {
-	trimAmount := calculateAmountToTrim(lines)
-
-	for _, str := range lines {
-		if len(str) <= trimAmount {
-			fmt.Fprintln(output, str)
-		} else {
-			fmt.Fprintln(output, str[trimAmount:])
-		}
-	}
-}
-
-func calculateAmountToTrim(lines []string) int {
-	amountToTrim := int(^uint(0) >> 1)
-
-	for _, lineContent := range lines {
-		for characterPosition, rune := range lineContent {
-			if characterPosition >= amountToTrim {
-				break
-			}
-			if !unicode.IsSpace(rune) {
-				if amountToTrim > characterPosition {
-					amountToTrim = characterPosition
-				}
-				break
-			}
-		}
-		if amountToTrim == 0 {
-			break
-		}
-	}
-
-	return amountToTrim
 }

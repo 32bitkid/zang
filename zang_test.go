@@ -10,13 +10,13 @@ import (
 var testFile = "line 1\n\tline 2\n\tline 3\nline 4"
 
 func TestTrimSpaces(t *testing.T) {
-	lines := []string{
+	lines := ContentLines{
 		"    This is some",
 		"       content",
 		"    that needs to be trimmed",
 	}
 
-	expected, actual := 4, calculateAmountToTrim(lines)
+	expected, actual := 4, lines.trimAmount()
 
 	if actual != expected {
 		t.Errorf("Expected %d got %d", expected, actual)
@@ -25,13 +25,13 @@ func TestTrimSpaces(t *testing.T) {
 }
 
 func TestTrimTabs(t *testing.T) {
-	lines := []string{
+	lines := ContentLines{
 		"\tThis is some",
 		"\t\tcontent",
 		"\tthat needs to be trimmed",
 	}
 
-	expected, actual := 1, calculateAmountToTrim(lines)
+	expected, actual := 1, lines.trimAmount()
 
 	if actual != expected {
 		t.Errorf("Expected %d got %d", expected, actual)
@@ -39,13 +39,13 @@ func TestTrimTabs(t *testing.T) {
 }
 
 func TestHandleDanglingIndents(t *testing.T) {
-	lines := []string{
+	lines := ContentLines{
 		"    This is some",
 		"        content",
 		"  that needs to be trimmed",
 	}
 
-	expected, actual := 2, calculateAmountToTrim(lines)
+	expected, actual := 2, lines.trimAmount()
 
 	if actual != expected {
 		t.Errorf("Expected %d got %d", expected, actual)
@@ -53,7 +53,7 @@ func TestHandleDanglingIndents(t *testing.T) {
 }
 
 func TestWriteTrimmedLines(t *testing.T) {
-	lines := []string{
+	lines := ContentLines{
 		"\tThis is some",
 		"\t\tcontent",
 		"\tthat needs to be trimmed",
@@ -61,7 +61,7 @@ func TestWriteTrimmedLines(t *testing.T) {
 
 	var output bytes.Buffer
 
-	writeTrimmedLines(&output, lines...)
+	lines.writeTrimmedTo(&output)
 
 	scanner := bufio.NewScanner(&output)
 
