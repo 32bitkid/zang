@@ -25,7 +25,7 @@ const (
 )
 
 var (
-	gitCodeReference *regexp.Regexp = regexp.MustCompile("^\\s*<!--\\s*\\{\\{(\\w+)\\|git\\|(.*?)\\|(.*?):?(\\d+)?:?(\\d+)?\\}\\}\\s*-->\\s*$")
+	gitCodeReference *regexp.Regexp = regexp.MustCompile(`^\s*<!--\s*\{\{(\w+)\|git\|(.*?)\|(.*?):?(\d+)?:?(\d+)?\}\}\s*-->\s*$`)
 )
 
 type GitCommandArgs struct {
