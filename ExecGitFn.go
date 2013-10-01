@@ -12,7 +12,7 @@ import (
 type (
 	ExecGitFn    func(io.Writer, ...string) error
 	cachedResult struct {
-		reader io.Reader
+		data []byte
 		error
 	}
 )
@@ -54,11 +54,11 @@ func (fn ExecGitFn) memoize() ExecGitFn {
 			var buffer bytes.Buffer
 			error := fn(&buffer, args...)
 
-			val = cachedResult{&buffer, error}
+			val = cachedResult{buffer.Bytes(), error}
 			cache[key] = val
 		}
 
-		io.Copy(writer, val.reader)
+		writer.Write(val.data)
 		return val.error
 	}
 }
