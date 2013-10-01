@@ -175,10 +175,6 @@ func processFile(in io.Reader, getOutFile func() (io.WriteCloser, error), result
 				return
 			}
 
-			if checkStaleFlag {
-				args.checkGitChanges(&buffer, git)
-			}
-
 			if skipScan, err = skipExistingCode(input); err != nil {
 				resultChannel <- ErrorResult{err}
 			}

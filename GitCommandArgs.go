@@ -25,14 +25,14 @@ const (
 )
 
 var (
-	gitCodeReference *regexp.Regexp = regexp.MustCompile(`^\s*<!--\s*\{\{(\w+)\|git\|(.*?)\|(.*?):?(\d+)?:?(\d+)?\}\}\s*-->\s*$`)
+	gitCodeReference *regexp.Regexp = regexp.MustCompile(`^\s*<!--\s*\{\{(\w+)\|git\|(.*?)\|(.*?):?(\d+|-)?:?(\d+)?\}\}\s*-->\s*$`)
 )
 
 type GitCommandArgs struct {
-	from, to              int
-	hasFrom, hasTo        bool
-	format, refspec, file string
-	source                string
+	from, to                   int
+	hasFrom, hasTo, skipOutput bool
+	format, refspec, file      string
+	source                     string
 }
 
 func (args *GitCommandArgs) displayLine(line int) bool {
@@ -48,8 +48,15 @@ func (args *GitCommandArgs) process(output io.Writer, execGit ExecGitFn) error {
 	fmt.Fprintln(output, beginMarker)
 
 	defer func() {
+		if checkStaleFlag {
+			args.checkGitChanges(output, execGit)
+		}
 		fmt.Fprintln(output, endMarker)
 	}()
+
+	if args.skipOutput {
+		return nil
+	}
 
 	if err := execGit.showFile(&cmdOutput, args.refspec, args.file); err == nil {
 
@@ -99,6 +106,7 @@ func parseAsGitCommand(text string) (*GitCommandArgs, bool) {
 			to,
 			fromErr == nil,
 			toErr == nil,
+			parts[4] == "-",
 			parts[1],
 			parts[2],
 			strings.Replace(parts[3], `\`, `/`, -1),
